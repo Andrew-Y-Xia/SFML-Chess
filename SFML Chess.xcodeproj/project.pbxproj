@@ -32,6 +32,18 @@
 		A19E211925FD058900F047F1 /* libsfml-graphics.2.5.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libsfml-graphics.2.5.1.dylib"; path = "../../../../../usr/local/Cellar/sfml/2.5.1_1/lib/libsfml-graphics.2.5.1.dylib"; sourceTree = "<group>"; };
 		A19E211A25FD058900F047F1 /* libsfml-system.2.5.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libsfml-system.2.5.1.dylib"; path = "../../../../../usr/local/Cellar/sfml/2.5.1_1/lib/libsfml-system.2.5.1.dylib"; sourceTree = "<group>"; };
 		A19E211E25FD05A100F047F1 /* SFML Chess.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SFML Chess.entitlements"; sourceTree = "<group>"; };
+		A19E212525FD40C000F047F1 /* Chess_bdt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_bdt60.png; sourceTree = "<group>"; };
+		A19E212625FD40C000F047F1 /* Chess_plt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_plt60.png; sourceTree = "<group>"; };
+		A19E212725FD40C000F047F1 /* Chess_qdt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_qdt60.png; sourceTree = "<group>"; };
+		A19E212825FD40C000F047F1 /* Chess_pdt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_pdt60.png; sourceTree = "<group>"; };
+		A19E212925FD40C000F047F1 /* Chess_blt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_blt60.png; sourceTree = "<group>"; };
+		A19E212A25FD40C000F047F1 /* Chess_qlt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_qlt60.png; sourceTree = "<group>"; };
+		A19E212B25FD40C000F047F1 /* Chess_rlt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = Chess_rlt60.png; path = ../../../../../Downloads/Chess_rlt60.png; sourceTree = "<group>"; };
+		A19E212C25FD40C000F047F1 /* Chess_kdt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_kdt60.png; sourceTree = "<group>"; };
+		A19E212D25FD40C000F047F1 /* Chess_klt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_klt60.png; sourceTree = "<group>"; };
+		A19E212E25FD40C000F047F1 /* Chess_nlt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_nlt60.png; sourceTree = "<group>"; };
+		A19E212F25FD40C000F047F1 /* Chess_rdt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_rdt60.png; sourceTree = "<group>"; };
+		A19E213025FD40C100F047F1 /* Chess_ndt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_ndt60.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -68,6 +80,7 @@
 		A19E210E25FD04DF00F047F1 /* SFML Chess */ = {
 			isa = PBXGroup;
 			children = (
+				A19E212025FD406600F047F1 /* Resources */,
 				A19E211E25FD05A100F047F1 /* SFML Chess.entitlements */,
 				A19E210F25FD04DF00F047F1 /* main.cpp */,
 			);
@@ -82,6 +95,25 @@
 				A19E211825FD058900F047F1 /* libsfml-window.2.5.1.dylib */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A19E212025FD406600F047F1 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A19E212525FD40C000F047F1 /* Chess_bdt60.png */,
+				A19E212925FD40C000F047F1 /* Chess_blt60.png */,
+				A19E212C25FD40C000F047F1 /* Chess_kdt60.png */,
+				A19E212D25FD40C000F047F1 /* Chess_klt60.png */,
+				A19E213025FD40C100F047F1 /* Chess_ndt60.png */,
+				A19E212E25FD40C000F047F1 /* Chess_nlt60.png */,
+				A19E212825FD40C000F047F1 /* Chess_pdt60.png */,
+				A19E212625FD40C000F047F1 /* Chess_plt60.png */,
+				A19E212725FD40C000F047F1 /* Chess_qdt60.png */,
+				A19E212A25FD40C000F047F1 /* Chess_qlt60.png */,
+				A19E212F25FD40C000F047F1 /* Chess_rdt60.png */,
+				A19E212B25FD40C000F047F1 /* Chess_rlt60.png */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
