@@ -7,6 +7,8 @@
 #include <vector>
 
 #define WIDTH 1024
+#define SCALE 1.3
+#define OFFSET 2
 
 
 // Global vars:
@@ -113,8 +115,12 @@ public:
                             break;
                     }
                     
+                    
+                    
+                    sprite.setOrigin(sf::Vector2f(30, 30));
+                    sprite.setPosition(x * WIDTH/8 + WIDTH/16 - OFFSET, y * WIDTH/8 + WIDTH/16 - OFFSET);
+                    sprite.setScale(sf::Vector2f(SCALE, SCALE));
                     sprites.push_back(sprite);
-                    sprites.back().setPosition(x * WIDTH/8, y * WIDTH/8);
                     
                 }
 //                std::cout << x << ", " << y << '\n';
@@ -340,10 +346,12 @@ void load_textures() {
         str2 = "Resources/Chess_";
         
         texture.loadFromFile(str2.append(1, *it) + "lt60.png");
+        texture.setSmooth(true);
         textures[i] = texture;
         
         str2 = "Resources/Chess_";
         texture.loadFromFile(str2.append(1, *it) + "dt60.png");
+        texture.setSmooth(true);
         textures[i+6] = texture;
         
         ++it;
@@ -430,10 +438,10 @@ int main()
     
                         Cords c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
                         if (is_move_valid(c.x, c.y)) {
-                            sprite_being_dragged.sprite->setPosition(c.x * WIDTH / 8, c.y * WIDTH / 8);
+                            sprite_being_dragged.sprite->setPosition(c.x * WIDTH/8 + WIDTH/16 - OFFSET, c.y * WIDTH/8 + WIDTH/16 - OFFSET);
                         }
                         else {
-                            sprite_being_dragged.sprite->setPosition(sprite_being_dragged.x * WIDTH / 8, sprite_being_dragged.y * WIDTH / 8);
+                            sprite_being_dragged.sprite->setPosition(sprite_being_dragged.x * WIDTH/8 + WIDTH/16 - OFFSET, sprite_being_dragged.y * WIDTH/8 + WIDTH/16 - OFFSET);
                         }
                         
                         sprite_being_dragged.sprite = NULL;
