@@ -355,6 +355,65 @@ void load_textures() {
 }
 
 
+
+void renderingThread(sf::RenderWindow* window)
+{
+    
+    sf::RectangleShape displaygrid[8][8];
+    // create the Grid
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 8; x++) {
+            // init rectangle
+            sf::RectangleShape tempRect(sf::Vector2f(WIDTH/8, WIDTH/8));
+            
+            // Make checkerboard pattern
+            if ((x + y) % 2 == 0) {
+                tempRect.setFillColor(sf::Color(24, 184, 9));
+            }
+            else {
+                tempRect.setFillColor(sf::Color(4, 145, 16));
+            }
+            
+            // move to proper location and draw
+            tempRect.setPosition(x * WIDTH/8, y * WIDTH/8);
+            displaygrid[y][x] = tempRect;
+        }
+    }
+    
+    // activate the window's context
+    window->setActive(true);
+    
+    
+
+    // the rendering loop
+    while (window->isOpen())
+    {
+        // clear the window with black color
+        window->clear(sf::Color::Black);
+
+        // Draw stage
+        
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                window->draw(displaygrid[y][x]);
+            }
+        }
+        
+        // Draw the pieces
+        draw_pieces(window);
+        
+        
+        
+        
+        
+        // end the current frame
+        window->display();
+    }
+}
+
+
+
+
 int main()
 {
     struct sprite_drag_data {
@@ -379,26 +438,13 @@ int main()
     board.set_texture_to_pieces();
     
     
-    sf::RectangleShape displaygrid[8][8];
-    // create the Grid
-    for (int y = 0; y < 8; y++) {
-        for (int x = 0; x < 8; x++) {
-            // init rectangle
-            sf::RectangleShape tempRect(sf::Vector2f(WIDTH/8, WIDTH/8));
-            
-            // Make checkerboard pattern
-            if ((x + y) % 2 == 0) {
-                tempRect.setFillColor(sf::Color(24, 184, 9));
-            }
-            else {
-                tempRect.setFillColor(sf::Color(4, 145, 16));
-            }
-            
-            // move to proper location and draw
-            tempRect.setPosition(x * WIDTH/8, y * WIDTH/8);
-            displaygrid[y][x] = tempRect;
-        }
-    }
+    // deactivate its OpenGL context
+    window.setActive(false);
+
+    // launch the rendering thread
+    sf::Thread thread(&renderingThread, &window);
+    thread.launch();
+
     
 
     // run the program as long as the window is open
@@ -449,29 +495,6 @@ int main()
             sprite_being_dragged.sprite->setPosition(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
         }
         
-        
-        
-        
-        // clear the window with black color
-        window.clear(sf::Color::Black);
-
-        // Draw stage
-        
-        for (int y = 0; y < 8; y++) {
-            for (int x = 0; x < 8; x++) {
-                window.draw(displaygrid[y][x]);
-            }
-        }
-        
-        // Draw the pieces
-        draw_pieces(&window);
-        
-        
-        
-        
-        
-        // end the current frame
-        window.display();
     }
 
     return EXIT_SUCCESS;
