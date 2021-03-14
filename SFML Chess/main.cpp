@@ -14,6 +14,11 @@ sf::Texture textures[13];
 std::vector<sf::Sprite> sprites;
 
 
+struct Cords {
+    int x, y;
+};
+
+
 // What type of piece is it?
 enum piece_type {
     Empty,
@@ -109,7 +114,7 @@ public:
                     }
                     
                     sprites.push_back(sprite);
-                    sprites.back().move(x * WIDTH/8, y * WIDTH/8);
+                    sprites.back().setPosition(x * WIDTH/8, y * WIDTH/8);
                     
                 }
 //                std::cout << x << ", " << y << '\n';
@@ -296,6 +301,34 @@ sf::Sprite* locate_sprite_clicked(int x, int y) {
 }
 
 
+Cords find_grid_bounds(int x, int y) {
+    Cords c;
+    if (!(0 <= x && x <= WIDTH && 0 <= y && y <= WIDTH)) {
+        c.x = -1;
+        c.y = -1;
+    } else {
+        c.x = (x * 8) / WIDTH;
+        c.y = (y * 8) / WIDTH;
+    }
+    return c;
+}
+
+
+bool is_move_valid(int x, int y) {
+    
+    
+    if (0 <= x && x <= 7 && 0 <= y && y <= 7) {
+        return true;
+    }
+    
+//    std::cout << x << " " << y << std::endl;
+    
+    return false;
+}
+
+
+
+
 void load_textures() {
     
     std::string str("bknpqr");
@@ -324,8 +357,12 @@ void load_textures() {
 
 int main()
 {
-    
-    sf::Sprite* sprite_being_dragged = NULL;
+    struct sprite_drag_data {
+        sf::Sprite* sprite;
+        int x, y;
+    };
+    sprite_drag_data sprite_being_dragged;
+    sprite_being_dragged.sprite = NULL;
 
     std::cout << std::__fs::filesystem::current_path() << std::endl;
     
@@ -358,7 +395,7 @@ int main()
             }
             
             // move to proper location and draw
-            tempRect.move(x * WIDTH/8, y * WIDTH/8);
+            tempRect.setPosition(x * WIDTH/8, y * WIDTH/8);
             displaygrid[y][x] = tempRect;
         }
     }
@@ -376,14 +413,31 @@ int main()
                 window.close();
             else if (event.type == sf::Event::MouseButtonPressed)
             {
-                if (event.mouseButton.button == sf::Mouse::Left)
+                if (event.mouseButton.button == sf::Mouse::Left && !sprite_being_dragged.sprite)
                 {
-                    sprite_being_dragged = locate_sprite_clicked(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                    sprite_being_dragged.sprite = locate_sprite_clicked(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                    
+                    if (sprite_being_dragged.sprite) {
+                        Cords c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                        sprite_being_dragged.x = c.x;
+                        sprite_being_dragged.y = c.y;
+                    }
                 }
             }
             else if (event.type == sf::Event::MouseButtonReleased) {
                 if (event.mouseButton.button == sf::Mouse::Left) {
-                    sprite_being_dragged = NULL;
+                    if (sprite_being_dragged.sprite) {
+    
+                        Cords c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                        if (is_move_valid(c.x, c.y)) {
+                            sprite_being_dragged.sprite->setPosition(c.x * WIDTH / 8, c.y * WIDTH / 8);
+                        }
+                        else {
+                            sprite_being_dragged.sprite->setPosition(sprite_being_dragged.x * WIDTH / 8, sprite_being_dragged.y * WIDTH / 8);
+                        }
+                        
+                        sprite_being_dragged.sprite = NULL;
+                    }
                 }
             }
         }
@@ -391,8 +445,8 @@ int main()
         
         // Do Calcs/Pos changes
         
-        if (sprite_being_dragged) {
-            sprite_being_dragged->setPosition(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+        if (sprite_being_dragged.sprite) {
+            sprite_being_dragged.sprite->setPosition(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
         }
         
         
