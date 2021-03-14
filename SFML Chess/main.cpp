@@ -4,13 +4,14 @@
 #include <unordered_map>
 #include <filesystem>
 #include <ctype.h>
+#include <vector>
 
 #define WIDTH 1024
 
 
 // Global vars:
 sf::Texture textures[13];
-sf::Sprite sprites[8][8];
+std::vector<sf::Sprite> sprites;
 
 
 // What type of piece is it?
@@ -68,7 +69,7 @@ public:
     }
     
     
-    void create() {
+    void set_texture_to_pieces() {
         int addon;
         Square current_square;
         
@@ -80,33 +81,38 @@ public:
                 if (current_square.color) {
                     addon = 6;
                 }
-                
-                switch (current_square.piece) {
-                    case Bishop:
-                        sprites[y][x].setTexture(textures[0 + addon]);
-                        break;
-                    case King:
-                        sprites[y][x].setTexture(textures[1 + addon]);
-                        break;
-                    case Knight:
-                        sprites[y][x].setTexture(textures[2 + addon]);
-                        break;
-                    case Pawn:
-                        sprites[y][x].setTexture(textures[3 + addon]);
-                        break;
-                    case Queen:
-                        sprites[y][x].setTexture(textures[4 + addon]);
-                        break;
-                    case Rook:
-                        sprites[y][x].setTexture(textures[5 + addon]);
-                        break;
-                    case Empty:
-                        sprites[y][x].setTexture(textures[12]);
-                        std::cout << "asdf";
-                        break;
+                if (current_square.piece != Empty) {
+                    
+                    sf::Sprite sprite;
+                    
+                    switch (current_square.piece) {
+                        case Bishop:
+                            sprite.setTexture(textures[0 + addon]);
+                            break;
+                        case King:
+                            sprite.setTexture(textures[1 + addon]);
+                            break;
+                        case Knight:
+                            sprite.setTexture(textures[2 + addon]);
+                            break;
+                        case Pawn:
+                            sprite.setTexture(textures[3 + addon]);
+                            break;
+                        case Queen:
+                            sprite.setTexture(textures[4 + addon]);
+                            break;
+                        case Rook:
+                            sprite.setTexture(textures[5 + addon]);
+                            break;
+                        case Empty:
+                            break;
+                    }
+                    
+                    sprites.push_back(sprite);
+                    sprites.back().move(x * WIDTH/8, y * WIDTH/8);
+                    
                 }
-                sprites[y][x].move(x * WIDTH/8, y * WIDTH/8);
-                std::cout << x << ", " << y << '\n';
+//                std::cout << x << ", " << y << '\n';
             }
         }
     }
@@ -273,10 +279,8 @@ public:
 
 
 void draw_pieces(sf::RenderWindow* window) {
-    for (int y = 0; y < 8; y++) {
-        for (int x = 0; x < 8; x++) {
-            window->draw(sprites[y][x]);
-        }
+    for (std::vector<sf::Sprite>::iterator it = sprites.begin() ; it != sprites.end(); ++it) {
+        window->draw(*it);
     }
 }
 
@@ -315,13 +319,15 @@ int main()
     
     // create the window
     sf::RenderWindow window(sf::VideoMode(WIDTH, WIDTH), "My window");
+    
+    sprites.reserve(64);
     load_textures();
     
     // init the chess board
     Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    board.debug_print();
+//    board.debug_print();
     
-    board.create();
+    board.set_texture_to_pieces();
     
     
     sf::RectangleShape displaygrid[8][8];
@@ -333,10 +339,10 @@ int main()
             
             // Make checkerboard pattern
             if ((x + y) % 2 == 0) {
-                tempRect.setFillColor(sf::Color(150, 50, 250));
+                tempRect.setFillColor(sf::Color(24, 184, 9));
             }
             else {
-                tempRect.setFillColor(sf::Color(150, 50, 200));
+                tempRect.setFillColor(sf::Color(4, 145, 16));
             }
             
             // move to proper location and draw
