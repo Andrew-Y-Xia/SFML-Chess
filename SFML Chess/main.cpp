@@ -286,6 +286,16 @@ void draw_pieces(sf::RenderWindow* window) {
 
 
 
+sf::Sprite* locate_sprite_clicked(int x, int y) {
+    for (std::vector<sf::Sprite>::iterator it = sprites.begin() ; it != sprites.end(); ++it) {
+        if ((*it).getGlobalBounds().contains(x, y)) {
+            return (&(*it));
+        }
+    }
+    return NULL;
+}
+
+
 void load_textures() {
     
     std::string str("bknpqr");
@@ -314,6 +324,8 @@ void load_textures() {
 
 int main()
 {
+    
+    sf::Sprite* sprite_being_dragged = NULL;
 
     std::cout << std::__fs::filesystem::current_path() << std::endl;
     
@@ -362,12 +374,34 @@ int main()
             // "close requested" event: we close the window
             if (event.type == sf::Event::Closed)
                 window.close();
+            else if (event.type == sf::Event::MouseButtonPressed)
+            {
+                if (event.mouseButton.button == sf::Mouse::Left)
+                {
+                    sprite_being_dragged = locate_sprite_clicked(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                }
+            }
+            else if (event.type == sf::Event::MouseButtonReleased) {
+                if (event.mouseButton.button == sf::Mouse::Left) {
+                    sprite_being_dragged = NULL;
+                }
+            }
         }
 
+        
+        // Do Calcs/Pos changes
+        
+        if (sprite_being_dragged) {
+            sprite_being_dragged->setPosition(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+        }
+        
+        
+        
+        
         // clear the window with black color
         window.clear(sf::Color::Black);
 
-        // draw everything here...
+        // Draw stage
         
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
@@ -375,9 +409,10 @@ int main()
             }
         }
         
-        
         // Draw the pieces
         draw_pieces(&window);
+        
+        
         
         
         
