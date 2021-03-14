@@ -11,15 +11,17 @@
 		A19E211B25FD058900F047F1 /* libsfml-window.2.5.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A19E211825FD058900F047F1 /* libsfml-window.2.5.1.dylib */; };
 		A19E211C25FD058900F047F1 /* libsfml-graphics.2.5.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A19E211925FD058900F047F1 /* libsfml-graphics.2.5.1.dylib */; };
 		A19E211D25FD058900F047F1 /* libsfml-system.2.5.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A19E211A25FD058900F047F1 /* libsfml-system.2.5.1.dylib */; };
+		A1DB5B6725FD5E7400EED7EF /* Resources in CopyFiles */ = {isa = PBXBuildFile; fileRef = A1DB5B6625FD5E7400EED7EF /* Resources */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		A19E210A25FD04DF00F047F1 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
+			dstPath = "";
 			dstSubfolderSpec = 0;
 			files = (
+				A1DB5B6725FD5E7400EED7EF /* Resources in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
@@ -44,6 +46,7 @@
 		A19E212E25FD40C000F047F1 /* Chess_nlt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_nlt60.png; sourceTree = "<group>"; };
 		A19E212F25FD40C000F047F1 /* Chess_rdt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_rdt60.png; sourceTree = "<group>"; };
 		A19E213025FD40C100F047F1 /* Chess_ndt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_ndt60.png; sourceTree = "<group>"; };
+		A1DB5B6625FD5E7400EED7EF /* Resources */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Resources; path = "SFML Chess/Resources"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,6 +66,7 @@
 		A19E210325FD04DF00F047F1 = {
 			isa = PBXGroup;
 			children = (
+				A1DB5B6625FD5E7400EED7EF /* Resources */,
 				A19E210E25FD04DF00F047F1 /* SFML Chess */,
 				A19E210D25FD04DF00F047F1 /* Products */,
 				A19E211725FD058900F047F1 /* Frameworks */,
@@ -275,6 +279,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				"EXCLUDED_ARCHS[sdk=*]" = arm64;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
