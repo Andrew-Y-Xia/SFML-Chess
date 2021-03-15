@@ -35,10 +35,9 @@ enum piece_type {
 
 // container for indiviual squares on chess board
 struct Square {
-    piece_type piece;
+    piece_type piece: 7;
     // 0 is white, 1 is black
     unsigned int color: 1;
-    unsigned int enpassant_available: 1;
 };
 
 
@@ -47,8 +46,8 @@ class Board {
 private:
     Square squares[8][8];
     
-    // true is white, false is black
-    bool current_turn;
+    // 0 is white, 1 is black
+    int current_turn;
    
     
     bool white_can_castle_queenside;
@@ -58,6 +57,7 @@ private:
     
     int halfmove_counter;
     int fullmove_counter;
+    Cords en_passant_cords;
     
 public:
     Board() {
@@ -66,7 +66,6 @@ public:
                 Square current_square;
                 current_square.piece = Empty;
                 current_square.color = 0;
-                current_square.enpassant_available = 0;
             }
         }
     }
@@ -154,14 +153,12 @@ public:
                             Square square;
                             square.color = 0;
                             square.piece = Empty;
-                            square.enpassant_available = 0;
                             squares[y][x] = square;
                             x++;
                         }
                     }
                     else {
                         Square square;
-                        square.enpassant_available = 0;
                         if (isupper(*it)) {
                             square.color = 0;
                         }
@@ -199,10 +196,10 @@ public:
             }
             else if (state_flag == 1) {
                 if (*it == 'w') {
-                    current_turn = true;
+                    current_turn = 0;
                 }
                 else {
-                    current_turn = false;
+                    current_turn = 1;
                 }
             }
             else if (state_flag == 2) {
@@ -273,8 +270,11 @@ public:
                     std::cout << "Should not have been reached. En Passant square cords are wrong";
             }
             y = 7 - (en_passant_square[1] - '0');
+            
+            Cords c;
+            c.x = x; c.y = y;
 
-            squares[y][x].enpassant_available = 1;
+            en_passant_cords = c;
         }
     }
     
@@ -285,6 +285,70 @@ public:
             }
         }
     }
+    
+    bool pawn_path(int from_x, int from_y, int to_x, int to_y) {
+        if (squares[from_y][from_y].color == 1) {
+            if (to_y - from_y == 1 && to_x == from_x && squares[to_y][to_x].piece == Empty) {
+                return true;
+            }
+            else if (abs(from_x - to_x) == 1 && to_y - from_y == 1 && squares[to_y][to_x].color == 0 && squares[to_y][to_x].piece != Empty) {
+                std::cout << "asdf";
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+        else {
+            if (to_y - from_y == -1 && to_x == from_x && squares[to_y][to_x].piece == Empty) {
+                return true;
+            }
+            else if (abs(from_x - to_x) == 1 && to_y - from_y == -1 && squares[to_y][to_x].color == 1 && squares[to_y][to_x].piece != Empty) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        }
+    }
+    
+    bool is_correct_turn(int x, int y) {
+        return (squares[y][x].color == current_turn);
+    }
+    
+    bool is_within_bounds(int x, int y) {
+        return (0 <= x && x <= 7 && 0 <= y && y <= 7);
+    }
+    
+    bool is_on_piece_path(int from_x, int from_y, int to_x, int to_y) {
+        switch (squares[from_y][from_x].piece) {
+            case Empty:
+                std::cout << "Something really bad must have happened to get here" << std::endl;
+                break;
+            case Pawn:
+                return pawn_path(from_x, from_y, to_x, to_y);
+                break;
+        }
+        return false;
+    }
+    
+    bool is_move_valid(int from_x, int from_y, int to_x, int to_y) {
+        
+        if (!(is_correct_turn(from_x, from_y))) {
+            return false;
+        }
+        else if (!(is_within_bounds(to_x, to_y))) {
+            return false;
+        }
+        else if (!is_on_piece_path(from_x, from_y, to_x, to_y)) {
+            return false;
+        }
+        
+    //    std::cout << x << " " << y << std::endl;
+        
+        return true;
+    }
+
 };
 
 
@@ -317,19 +381,6 @@ Cords find_grid_bounds(int x, int y) {
         c.y = (y * 8) / WIDTH;
     }
     return c;
-}
-
-
-bool is_move_valid(int x, int y) {
-    
-    
-    if (0 <= x && x <= 7 && 0 <= y && y <= 7) {
-        return true;
-    }
-    
-//    std::cout << x << " " << y << std::endl;
-    
-    return false;
 }
 
 
@@ -437,7 +488,7 @@ int main()
                     if (sprite_being_dragged.sprite) {
     
                         Cords c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
-                        if (is_move_valid(c.x, c.y)) {
+                        if (board.is_move_valid(sprite_being_dragged.x, sprite_being_dragged.y, c.x, c.y)) {
                             sprite_being_dragged.sprite->setPosition(c.x * WIDTH/8 + WIDTH/16 - OFFSET, c.y * WIDTH/8 + WIDTH/16 - OFFSET);
                         }
                         else {
