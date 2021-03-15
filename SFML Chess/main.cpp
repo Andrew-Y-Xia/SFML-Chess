@@ -4,7 +4,7 @@
 #include <unordered_map>
 #include <filesystem>
 #include <ctype.h>
-#include <vector>
+#include <forward_list>
 
 #define WIDTH 1024
 #define SCALE 1.3
@@ -14,7 +14,7 @@
 
 // Global vars:
 sf::Texture textures[13];
-std::vector<sf::Sprite> sprites;
+std::forward_list<sf::Sprite> sprites;
 
 
 struct Cords {
@@ -75,6 +75,16 @@ public:
         read_LEN(str);
     }
     
+    void move(int from_x, int from_y, int to_x, int to_y) {
+        squares[to_y][to_x] = squares[from_y][from_x];
+        Square square;
+        square.piece = Empty;
+        square.color = 0;
+        squares[from_y][from_x] = square;
+        
+        current_turn = !current_turn;
+    }
+    
     
     void set_texture_to_pieces() {
         int addon;
@@ -120,7 +130,7 @@ public:
                     sprite.setOrigin(sf::Vector2f(30, 30));
                     sprite.setPosition(x * WIDTH/8 + WIDTH/16 - OFFSET, y * WIDTH/8 + WIDTH/16 - OFFSET);
                     sprite.setScale(sf::Vector2f(SCALE, SCALE));
-                    sprites.push_back(sprite);
+                    sprites.push_front(sprite);
                     
                 }
 //                std::cout << x << ", " << y << '\n';
@@ -280,14 +290,50 @@ public:
     }
     
     void debug_print() {
+        for (int i = 0; i < 60; i++) {
+            std::cout << std::endl;
+        }
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
-                std::cout << squares[y][x].piece << " " << squares[y][x].color << '\n';
+                char c;
+                switch (squares[y][x].piece) {
+                    case Empty:
+                        c = '0';
+                        break;
+                    case Pawn:
+                        c = 'p';
+                        break;
+                    case Knight:
+                        c = 'n';
+                        break;
+                    case Bishop:
+                        c = 'b';
+                        break;
+                    case Rook:
+                        c = 'r';
+                        break;
+                    case Queen:
+                        c = 'q';
+                        break;
+                    case King:
+                        c = 'k';
+                        break;
+                }
+                if (squares[y][x].color == 0 && squares[y][x].piece != Empty) {
+                    c = (char) toupper(c);
+                }
+                std::cout << c << ' ';
             }
+            std::cout << std::endl;
         }
     }
     
+    
+    
+    
+    
     bool is_square_under_attack(int attacker, int x, int y) {
+        // TODO: find if square is being attacked.
         return false;
     }
     
@@ -302,11 +348,12 @@ public:
     
     
     bool is_pawn_move_valid(int from_x, int from_y, int to_x, int to_y) {
-        if (squares[from_y][from_y].color == 1) {
+        // TODO: En Passant + First move
+        if (squares[from_y][from_x].color == 1) {
             if (to_y - from_y == 1 && to_x == from_x && squares[to_y][to_x].piece == Empty) {
                 return true;
             }
-            else if (abs(from_x - to_x) == 1 && to_y - from_y == 1 && squares[to_y][to_x].color == 0 && squares[to_y][to_x].piece != Empty) {
+            else if (abs(from_x - to_x) == 1 && to_y - from_y == 1 && squares[to_y][to_x].piece != Empty) {
                 return true;
             }
             else {
@@ -317,7 +364,7 @@ public:
             if (to_y - from_y == -1 && to_x == from_x && squares[to_y][to_x].piece == Empty) {
                 return true;
             }
-            else if (abs(from_x - to_x) == 1 && to_y - from_y == -1 && squares[to_y][to_x].color == 1 && squares[to_y][to_x].piece != Empty) {
+            else if (abs(from_x - to_x) == 1 && to_y - from_y == -1 && squares[to_y][to_x].piece != Empty) {
                 return true;
             }
             else {
@@ -327,6 +374,7 @@ public:
     }
     
     bool is_king_move_valid(int from_x, int from_y, int to_x, int to_y) {
+        // TODO: Castling
         if (!(abs(from_y - to_y) <= 1 && abs(from_x - to_x) <= 1)) {
             return false;
         }
@@ -347,6 +395,7 @@ public:
         return (0 <= x && x <= 7 && 0 <= y && y <= 7);
     }
     
+    // TODO: Pins
     bool piece_is_pinned(int x, int y);
     
     bool is_following_piece_rules(int from_x, int from_y, int to_x, int to_y) {
@@ -399,7 +448,7 @@ public:
 
 
 void draw_pieces(sf::RenderWindow* window) {
-    for (std::vector<sf::Sprite>::iterator it = sprites.begin() ; it != sprites.end(); ++it) {
+    for (std::forward_list<sf::Sprite>::iterator it = sprites.begin() ; it != sprites.end(); ++it) {
         window->draw(*it);
     }
 }
@@ -407,12 +456,26 @@ void draw_pieces(sf::RenderWindow* window) {
 
 
 sf::Sprite* locate_sprite_clicked(int x, int y) {
-    for (std::vector<sf::Sprite>::iterator it = sprites.begin() ; it != sprites.end(); ++it) {
+    for (std::forward_list<sf::Sprite>::iterator it = sprites.begin() ; it != sprites.end(); ++it) {
         if ((*it).getGlobalBounds().contains(x, y)) {
             return (&(*it));
         }
     }
     return NULL;
+}
+
+
+
+int locate_sprite_clicked_index(int x, int y, sf::Sprite* sprite) {
+    int counter = 0;
+    for (std::forward_list<sf::Sprite>::iterator it = sprites.begin() ; it != sprites.end(); ++it) {
+        if ((*it).getGlobalBounds().contains(x, y) && (&(*it) != sprite)) {
+//            std::cout << counter << std::endl;
+            return counter;
+        }
+        counter++;
+    }
+    return -1;
 }
 
 
@@ -473,7 +536,6 @@ int main()
     // create the window
     sf::RenderWindow window(sf::VideoMode(WIDTH, WIDTH), "My window");
     
-    sprites.reserve(64);
     load_textures();
     
     // init the chess board
@@ -534,9 +596,21 @@ int main()
     
                         Cords c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
                         if (board.is_move_valid(sprite_being_dragged.x, sprite_being_dragged.y, c.x, c.y)) {
+                            // If move is valid, set the sprite to the new position, delete the sprite that was residing in the to_location, and register the move with the board.
+                            int temp = locate_sprite_clicked_index(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y, sprite_being_dragged.sprite);
+                            if (temp != -1) {
+                                std::forward_list<sf::Sprite>::iterator it = sprites.begin();
+                                std::advance(it, temp - 1);
+                                sprites.erase_after(it);
+                            }
+                            
+//                            std::cout << c.x << ' ' << c.y << std::endl;
                             sprite_being_dragged.sprite->setPosition(c.x * WIDTH/8 + WIDTH/16 - OFFSET, c.y * WIDTH/8 + WIDTH/16 - OFFSET);
+                            board.move(sprite_being_dragged.x, sprite_being_dragged.y, c.x, c.y);
+//                            board.debug_print();
                         }
                         else {
+                            // If move isn't valid, return sprite to original position and do nothing
                             sprite_being_dragged.sprite->setPosition(sprite_being_dragged.x * WIDTH/8 + WIDTH/16 - OFFSET, sprite_being_dragged.y * WIDTH/8 + WIDTH/16 - OFFSET);
                         }
                         
