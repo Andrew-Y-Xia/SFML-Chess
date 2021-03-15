@@ -9,6 +9,7 @@
 #define WIDTH 1024
 #define SCALE 1.3
 #define OFFSET 2
+#define ASDF std::cout << "asdf" << std::endl
 
 
 // Global vars:
@@ -286,13 +287,26 @@ public:
         }
     }
     
-    bool pawn_path(int from_x, int from_y, int to_x, int to_y) {
+    bool is_square_under_attack(int attacker, int x, int y) {
+        return false;
+    }
+    
+    bool is_friendly_piece(int x, int y) {
+        if (squares[y][x].piece != Empty && squares[y][x].color == current_turn) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    
+    
+    bool is_pawn_move_valid(int from_x, int from_y, int to_x, int to_y) {
         if (squares[from_y][from_y].color == 1) {
             if (to_y - from_y == 1 && to_x == from_x && squares[to_y][to_x].piece == Empty) {
                 return true;
             }
             else if (abs(from_x - to_x) == 1 && to_y - from_y == 1 && squares[to_y][to_x].color == 0 && squares[to_y][to_x].piece != Empty) {
-                std::cout << "asdf";
                 return true;
             }
             else {
@@ -312,6 +326,19 @@ public:
         }
     }
     
+    bool is_king_move_valid(int from_x, int from_y, int to_x, int to_y) {
+        if (!(abs(from_y - to_y) <= 1 && abs(from_x - to_x) <= 1)) {
+            return false;
+        }
+        else if (is_square_under_attack(!current_turn, to_x, to_y)) {
+            return false;
+        }
+        else {
+            return true;
+        }
+    }
+    
+    
     bool is_correct_turn(int x, int y) {
         return (squares[y][x].color == current_turn);
     }
@@ -320,15 +347,30 @@ public:
         return (0 <= x && x <= 7 && 0 <= y && y <= 7);
     }
     
-    bool is_on_piece_path(int from_x, int from_y, int to_x, int to_y) {
+    bool piece_is_pinned(int x, int y);
+    
+    bool is_following_piece_rules(int from_x, int from_y, int to_x, int to_y) {
+        
         switch (squares[from_y][from_x].piece) {
-            case Empty:
-                std::cout << "Something really bad must have happened to get here" << std::endl;
-                break;
+            // Pawn and king are special cases, handle them differently
+                
             case Pawn:
-                return pawn_path(from_x, from_y, to_x, to_y);
+                return is_pawn_move_valid(from_x, from_y, to_x, to_y);
                 break;
+            case King:
+                return is_king_move_valid(from_x, from_y, to_x, to_y);
+                break;
+                
+            default:
+                switch (squares[from_y][from_x].piece) {
+                case Knight:
+                    break;
+                default:
+                    std::cout << "Something really bad must have happened to get here" << std::endl;
+                    break;
+            }
         }
+        
         return false;
     }
     
@@ -340,7 +382,10 @@ public:
         else if (!(is_within_bounds(to_x, to_y))) {
             return false;
         }
-        else if (!is_on_piece_path(from_x, from_y, to_x, to_y)) {
+        else if (is_friendly_piece(to_x, to_y)) {
+            return false;
+        }
+        else if (!is_following_piece_rules(from_x, from_y, to_x, to_y)) {
             return false;
         }
         
@@ -423,7 +468,7 @@ int main()
     sprite_drag_data sprite_being_dragged;
     sprite_being_dragged.sprite = NULL;
 
-    std::cout << std::__fs::filesystem::current_path() << std::endl;
+    // std::cout << std::__fs::filesystem::current_path() << std::endl;
     
     // create the window
     sf::RenderWindow window(sf::VideoMode(WIDTH, WIDTH), "My window");
