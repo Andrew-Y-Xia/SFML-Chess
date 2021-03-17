@@ -6,6 +6,8 @@
 #include <forward_list>
 #include <sparsehash/dense_hash_map>
 
+#include "ResourcePath.hpp"
+
 
 #define WIDTH 1024
 #define SCALE 1.3
@@ -503,13 +505,13 @@ void load_textures() {
     sf::Texture texture;
     
     for (int i = 0; i < 6; i++) {
-        str2 = "Resources/Chess_";
+        str2 = resourcePath() + "Chess_";
         
         texture.loadFromFile(str2.append(1, *it) + "lt60.png");
         texture.setSmooth(true);
         textures[i] = texture;
         
-        str2 = "Resources/Chess_";
+        str2 = resourcePath() + "Chess_";
         texture.loadFromFile(str2.append(1, *it) + "dt60.png");
         texture.setSmooth(true);
         textures[i+6] = texture;
