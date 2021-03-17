@@ -1,10 +1,11 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <string>
-#include <unordered_map>
 #include <filesystem>
 #include <ctype.h>
 #include <forward_list>
+#include <sparsehash/dense_hash_map>
+
 
 #define WIDTH 1024
 #define SCALE 1.3
@@ -540,6 +541,7 @@ int main()
     
     // init the chess board
     Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+//    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    board.debug_print();
     
     board.set_texture_to_pieces();
@@ -597,15 +599,19 @@ int main()
                         Cords c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
                         if (board.is_move_valid(sprite_being_dragged.x, sprite_being_dragged.y, c.x, c.y)) {
                             // If move is valid, set the sprite to the new position, delete the sprite that was residing in the to_location, and register the move with the board.
-                            int temp = locate_sprite_clicked_index(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y, sprite_being_dragged.sprite);
-                            if (temp != -1) {
-                                std::forward_list<sf::Sprite>::iterator it = sprites.begin();
-                                std::advance(it, temp - 1);
-                                sprites.erase_after(it);
-                            }
+                            int temp = locate_sprite_clicked_index(c.x * WIDTH/8 + WIDTH/16 - OFFSET, c.y * WIDTH/8 + WIDTH/16 - OFFSET, sprite_being_dragged.sprite);
                             
 //                            std::cout << c.x << ' ' << c.y << std::endl;
                             sprite_being_dragged.sprite->setPosition(c.x * WIDTH/8 + WIDTH/16 - OFFSET, c.y * WIDTH/8 + WIDTH/16 - OFFSET);
+                            
+                            
+                            if (temp != -1) {
+                                std::forward_list<sf::Sprite>::iterator it = sprites.before_begin();
+                                std::advance(it, temp);
+                                sprites.erase_after(it);
+                            }
+                            
+                            
                             board.move(sprite_being_dragged.x, sprite_being_dragged.y, c.x, c.y);
 //                            board.debug_print();
                         }

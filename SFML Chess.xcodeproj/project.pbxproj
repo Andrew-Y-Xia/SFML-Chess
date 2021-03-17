@@ -7,10 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A15B96152601079400738E6F /* libsfml-graphics.2.5.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A15B96122601079400738E6F /* libsfml-graphics.2.5.1.dylib */; };
+		A15B96162601079400738E6F /* libsfml-window.2.5.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A15B96132601079400738E6F /* libsfml-window.2.5.1.dylib */; };
+		A15B96172601079400738E6F /* libsfml-system.2.5.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A15B96142601079400738E6F /* libsfml-system.2.5.1.dylib */; };
 		A19E211025FD04DF00F047F1 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A19E210F25FD04DF00F047F1 /* main.cpp */; };
-		A19E211B25FD058900F047F1 /* libsfml-window.2.5.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A19E211825FD058900F047F1 /* libsfml-window.2.5.1.dylib */; };
-		A19E211C25FD058900F047F1 /* libsfml-graphics.2.5.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A19E211925FD058900F047F1 /* libsfml-graphics.2.5.1.dylib */; };
-		A19E211D25FD058900F047F1 /* libsfml-system.2.5.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A19E211A25FD058900F047F1 /* libsfml-system.2.5.1.dylib */; };
 		A1DB5B6725FD5E7400EED7EF /* Resources in CopyFiles */ = {isa = PBXBuildFile; fileRef = A1DB5B6625FD5E7400EED7EF /* Resources */; };
 /* End PBXBuildFile section */
 
@@ -28,11 +28,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A15B96122601079400738E6F /* libsfml-graphics.2.5.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libsfml-graphics.2.5.1.dylib"; path = "../../../../../usr/local/Cellar/sfml/2.5.1_1/lib/libsfml-graphics.2.5.1.dylib"; sourceTree = "<group>"; };
+		A15B96132601079400738E6F /* libsfml-window.2.5.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libsfml-window.2.5.1.dylib"; path = "../../../../../usr/local/Cellar/sfml/2.5.1_1/lib/libsfml-window.2.5.1.dylib"; sourceTree = "<group>"; };
+		A15B96142601079400738E6F /* libsfml-system.2.5.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libsfml-system.2.5.1.dylib"; path = "../../../../../usr/local/Cellar/sfml/2.5.1_1/lib/libsfml-system.2.5.1.dylib"; sourceTree = "<group>"; };
 		A19E210C25FD04DF00F047F1 /* SFML Chess */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "SFML Chess"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A19E210F25FD04DF00F047F1 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
-		A19E211825FD058900F047F1 /* libsfml-window.2.5.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libsfml-window.2.5.1.dylib"; path = "../../../../../usr/local/Cellar/sfml/2.5.1_1/lib/libsfml-window.2.5.1.dylib"; sourceTree = "<group>"; };
-		A19E211925FD058900F047F1 /* libsfml-graphics.2.5.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libsfml-graphics.2.5.1.dylib"; path = "../../../../../usr/local/Cellar/sfml/2.5.1_1/lib/libsfml-graphics.2.5.1.dylib"; sourceTree = "<group>"; };
-		A19E211A25FD058900F047F1 /* libsfml-system.2.5.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libsfml-system.2.5.1.dylib"; path = "../../../../../usr/local/Cellar/sfml/2.5.1_1/lib/libsfml-system.2.5.1.dylib"; sourceTree = "<group>"; };
 		A19E211E25FD05A100F047F1 /* SFML Chess.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "SFML Chess.entitlements"; sourceTree = "<group>"; };
 		A19E212525FD40C000F047F1 /* Chess_bdt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_bdt60.png; sourceTree = "<group>"; };
 		A19E212625FD40C000F047F1 /* Chess_plt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_plt60.png; sourceTree = "<group>"; };
@@ -54,9 +54,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A19E211B25FD058900F047F1 /* libsfml-window.2.5.1.dylib in Frameworks */,
-				A19E211C25FD058900F047F1 /* libsfml-graphics.2.5.1.dylib in Frameworks */,
-				A19E211D25FD058900F047F1 /* libsfml-system.2.5.1.dylib in Frameworks */,
+				A15B96172601079400738E6F /* libsfml-system.2.5.1.dylib in Frameworks */,
+				A15B96152601079400738E6F /* libsfml-graphics.2.5.1.dylib in Frameworks */,
+				A15B96162601079400738E6F /* libsfml-window.2.5.1.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -94,9 +94,9 @@
 		A19E211725FD058900F047F1 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				A19E211925FD058900F047F1 /* libsfml-graphics.2.5.1.dylib */,
-				A19E211A25FD058900F047F1 /* libsfml-system.2.5.1.dylib */,
-				A19E211825FD058900F047F1 /* libsfml-window.2.5.1.dylib */,
+				A15B96122601079400738E6F /* libsfml-graphics.2.5.1.dylib */,
+				A15B96142601079400738E6F /* libsfml-system.2.5.1.dylib */,
+				A15B96132601079400738E6F /* libsfml-window.2.5.1.dylib */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -306,6 +306,9 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/usr/local/Cellar/sfml/2.5.1_1/lib,
+					"$(PROJECT_DIR)/SFML\\ Chess",
+					"$(PROJECT_DIR)/SFML\\ Chess",
+					"$(PROJECT_DIR)/SFML\\ Chess",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -322,6 +325,9 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					/usr/local/Cellar/sfml/2.5.1_1/lib,
+					"$(PROJECT_DIR)/SFML\\ Chess",
+					"$(PROJECT_DIR)/SFML\\ Chess",
+					"$(PROJECT_DIR)/SFML\\ Chess",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
