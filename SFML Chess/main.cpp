@@ -1,7 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
 #include <string>
-#include <filesystem>
 #include <ctype.h>
 #include <forward_list>
 #include <sparsehash/dense_hash_map>
@@ -34,6 +33,27 @@ enum piece_type {
     Rook,
     Queen,
     King
+};
+
+
+enum move_type {
+    // Pawn moving two steps for initial move is not included since it can be treated like a normal move
+    Normal,
+    Promote_to_Queen,
+    Promote_to_Rook,
+    Promote_to_Bishop,
+    Promote_to_Knight,
+    En_Passant,
+    Castle_Queenside,
+    Castle_Kingside,
+};
+
+
+struct Move {
+    Cords from_c;
+    Cords to_c;
+    
+    move_type type;
 };
 
 
@@ -350,13 +370,13 @@ public:
     }
     
     
-    bool is_pawn_move_valid(int from_x, int from_y, int to_x, int to_y) {
+    bool is_pawn_move_valid(Move move) {
         // TODO: En Passant + First move
-        if (squares[from_y][from_x].color == 1) {
-            if (to_y - from_y == 1 && to_x == from_x && squares[to_y][to_x].piece == Empty) {
+        if (squares[move.from_c.y][move.from_c.x].color == 1) {
+            if (move.to_c.y - move.from_c.y == 1 && move.to_c.x == move.from_c.x && squares[move.to_c.y][move.to_c.x].piece == Empty) {
                 return true;
             }
-            else if (abs(from_x - to_x) == 1 && to_y - from_y == 1 && squares[to_y][to_x].piece != Empty) {
+            else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == 1 && squares[move.to_c.y][move.to_c.x].piece != Empty) {
                 return true;
             }
             else {
@@ -364,10 +384,10 @@ public:
             }
         }
         else {
-            if (to_y - from_y == -1 && to_x == from_x && squares[to_y][to_x].piece == Empty) {
+            if (move.to_c.y - move.from_c.y == -1 && move.to_c.x == move.from_c.x && squares[move.to_c.y][move.to_c.x].piece == Empty) {
                 return true;
             }
-            else if (abs(from_x - to_x) == 1 && to_y - from_y == -1 && squares[to_y][to_x].piece != Empty) {
+            else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == -1 && squares[move.to_c.y][move.to_c.x].piece != Empty) {
                 return true;
             }
             else {
@@ -401,20 +421,20 @@ public:
     // TODO: Pins
     bool piece_is_pinned(int x, int y);
     
-    bool is_following_piece_rules(int from_x, int from_y, int to_x, int to_y) {
+    bool is_following_piece_rules(Move move) {
         
-        switch (squares[from_y][from_x].piece) {
+        switch (squares[move.from_c.y][move.from_c.x].piece) {
             // Pawn and king are special cases, handle them differently
                 
             case Pawn:
-                return is_pawn_move_valid(from_x, from_y, to_x, to_y);
+                return is_pawn_move_valid(move);
                 break;
             case King:
-                return is_king_move_valid(from_x, from_y, to_x, to_y);
+                return is_king_move_valid(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
                 break;
                 
             default:
-                switch (squares[from_y][from_x].piece) {
+                switch (squares[move.from_c.y][move.from_c.x].piece) {
                 case Knight:
                     break;
                 default:
@@ -426,18 +446,18 @@ public:
         return false;
     }
     
-    bool is_move_valid(int from_x, int from_y, int to_x, int to_y) {
+    bool is_move_valid(Move move) {
         
-        if (!(is_correct_turn(from_x, from_y))) {
+        if (!(is_correct_turn(move.from_c.x, move.from_c.y))) {
             return false;
         }
-        else if (!(is_within_bounds(to_x, to_y))) {
+        else if (!(is_within_bounds(move.to_c.x, move.to_c.y))) {
             return false;
         }
-        else if (is_friendly_piece(to_x, to_y)) {
+        else if (is_friendly_piece(move.to_c.x, move.to_c.y)) {
             return false;
         }
-        else if (!is_following_piece_rules(from_x, from_y, to_x, to_y)) {
+        else if (!is_following_piece_rules(move)) {
             return false;
         }
         
@@ -534,8 +554,7 @@ int main()
     sprite_drag_data sprite_being_dragged;
     sprite_being_dragged.sprite = NULL;
 
-    // std::cout << std::__fs::filesystem::current_path() << std::endl;
-    
+
     // create the window
     sf::RenderWindow window(sf::VideoMode(WIDTH, WIDTH), "My window");
     
@@ -544,9 +563,10 @@ int main()
     // init the chess board
     Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
-//    board.debug_print();
-    
+
     board.set_texture_to_pieces();
+    
+    Move move;
     
     
     sf::RectangleShape displaygrid[8][8];
@@ -588,23 +608,21 @@ int main()
                     sprite_being_dragged.sprite = locate_sprite_clicked(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
                     
                     if (sprite_being_dragged.sprite) {
-                        Cords c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
-                        sprite_being_dragged.x = c.x;
-                        sprite_being_dragged.y = c.y;
-                    }
+                        move.from_c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                   }
                 }
             }
             else if (event.type == sf::Event::MouseButtonReleased) {
                 if (event.mouseButton.button == sf::Mouse::Left) {
                     if (sprite_being_dragged.sprite) {
     
-                        Cords c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
-                        if (board.is_move_valid(sprite_being_dragged.x, sprite_being_dragged.y, c.x, c.y)) {
+                        move.to_c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                        if (board.is_move_valid(move)) {
                             // If move is valid, set the sprite to the new position, delete the sprite that was residing in the to_location, and register the move with the board.
-                            int temp = locate_sprite_clicked_index(c.x * WIDTH/8 + WIDTH/16 - OFFSET, c.y * WIDTH/8 + WIDTH/16 - OFFSET, sprite_being_dragged.sprite);
+                            int temp = locate_sprite_clicked_index(move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, move.to_c.y * WIDTH/8 + WIDTH/16 - OFFSET, sprite_being_dragged.sprite);
                             
 //                            std::cout << c.x << ' ' << c.y << std::endl;
-                            sprite_being_dragged.sprite->setPosition(c.x * WIDTH/8 + WIDTH/16 - OFFSET, c.y * WIDTH/8 + WIDTH/16 - OFFSET);
+                            sprite_being_dragged.sprite->setPosition(move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, move.to_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
                             
                             
                             if (temp != -1) {
@@ -614,12 +632,12 @@ int main()
                             }
                             
                             
-                            board.move(sprite_being_dragged.x, sprite_being_dragged.y, c.x, c.y);
+                            board.move(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
 //                            board.debug_print();
                         }
                         else {
                             // If move isn't valid, return sprite to original position and do nothing
-                            sprite_being_dragged.sprite->setPosition(sprite_being_dragged.x * WIDTH/8 + WIDTH/16 - OFFSET, sprite_being_dragged.y * WIDTH/8 + WIDTH/16 - OFFSET);
+                            sprite_being_dragged.sprite->setPosition(move.from_c.x * WIDTH/8 + WIDTH/16 - OFFSET, move.from_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
                         }
                         
                         sprite_being_dragged.sprite = NULL;
