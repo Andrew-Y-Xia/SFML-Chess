@@ -66,6 +66,11 @@ struct Square {
 };
 
 
+// Math function: sign
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
+
 
 class Board {
 private:
@@ -346,6 +351,35 @@ public:
         }
     }
     
+    Cords sliding_pieces_incrementer(int x, int y, int increment_x, int increment_y) {
+        Cords c;
+        c.x = x;
+        c.y = y;
+        
+        do {
+            c.x += increment_x;
+            c.y += increment_y;
+            
+            
+            if (!is_within_bounds(c.x, c.y)) {
+                c.x -= increment_x;
+                c.y -= increment_y;
+                return c;
+            }
+            else if (squares[c.y][c.x].piece != Empty) {
+                if (squares[c.y][c.x].color != current_turn) {
+                    return c;
+                }
+                else {
+                    c.x -= increment_x;
+                    c.y -= increment_y;
+                    return c;
+                }
+            }
+            
+        } while (1);
+    }
+    
     
     void generate_attacked_squares();
     
@@ -414,6 +448,10 @@ public:
             return false;
         }
         else {
+            Cords c = sliding_pieces_incrementer(from_x, from_y, sgn<int>(to_x-from_x), sgn<int>(to_y-from_y));
+            if (!(abs(from_x - c.x) >= abs(from_x - to_x) && abs(from_y - c.y) >= abs(from_y - to_y))) {
+                return false;
+            }
             return true;
         }
     }
@@ -674,7 +712,7 @@ int main()
                             
                             
                             board.move(move);
-//                            board.debug_print();
+                            board.debug_print();
                         }
                         else {
                             // If move isn't valid, return sprite to original position and do nothing
