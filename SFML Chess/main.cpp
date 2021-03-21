@@ -401,11 +401,14 @@ public:
     
     bool is_pawn_move_valid(Move move, Move& return_move) {
         // TODO: En Passant + First move
-        if (squares[move.from_c.y][move.from_c.x].color == 1) {
+        if (current_turn == 1) {
             if (move.to_c.y - move.from_c.y == 1 && move.to_c.x == move.from_c.x && squares[move.to_c.y][move.to_c.x].piece == Empty) {
                 return true;
             }
             else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == 1 && squares[move.to_c.y][move.to_c.x].piece != Empty) {
+                return true;
+            }
+            else if (abs(move.from_c.y - move.to_c.y) == 2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 1) {
                 return true;
             }
             else {
@@ -417,6 +420,9 @@ public:
                 return true;
             }
             else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == -1 && squares[move.to_c.y][move.to_c.x].piece != Empty) {
+                return true;
+            }
+            else if (abs(move.from_c.y - move.to_c.y) == 2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 6) {
                 return true;
             }
             else {
