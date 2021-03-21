@@ -108,6 +108,9 @@ public:
         read_LEN(str);
     }
     
+    int get_current_turn() {
+        return current_turn;
+    }
     
     void set_texture_to_pieces() {
         int addon;
@@ -408,7 +411,7 @@ public:
             else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == 1 && squares[move.to_c.y][move.to_c.x].piece != Empty) {
                 return true;
             }
-            else if (abs(move.from_c.y - move.to_c.y) == 2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 1) {
+            else if (move.from_c.y - move.to_c.y == -2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 1) {
                 return true;
             }
             else {
@@ -422,7 +425,7 @@ public:
             else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == -1 && squares[move.to_c.y][move.to_c.x].piece != Empty) {
                 return true;
             }
-            else if (abs(move.from_c.y - move.to_c.y) == 2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 6) {
+            else if (move.from_c.y - move.to_c.y == 2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 6) {
                 return true;
             }
             else {
@@ -433,15 +436,34 @@ public:
     
     bool is_king_move_valid(Move move, Move& return_move) {
         // TODO: Castling
-        if (!(abs(move.from_c.y - move.to_c.y) <= 1 && abs(move.from_c.x - move.to_c.x) <= 1)) {
+        if (is_square_under_attack(!current_turn, move.to_c.x, move.to_c.y)) {
             return false;
         }
-        else if (is_square_under_attack(!current_turn, move.to_c.x, move.to_c.y)) {
-            return false;
-        }
-        else {
+        else if (abs(move.from_c.y - move.to_c.y) <= 1 && abs(move.from_c.x - move.to_c.x) <= 1) {
             return true;
         }
+        if (current_turn == 1) {
+            if (move.to_c.x == 2 && move.to_c.y == 0 && black_can_castle_queenside) {
+                return_move.type = Castle_Queenside;
+                return true;
+            }
+            else if (move.to_c.x == 6 && move.to_c.y == 0 && black_can_castle_kingside) {
+                return_move.type = Castle_Kingside;
+                return true;
+            }
+        }
+        else {
+            if (move.to_c.x == 2 && move.to_c.y == 7 && black_can_castle_queenside) {
+                return_move.type = Castle_Queenside;
+                return true;
+            }
+            else if (move.to_c.x == 6 && move.to_c.y == 7 && black_can_castle_kingside) {
+                return_move.type = Castle_Kingside;
+                return true;
+            }
+        }
+        
+        return false;
     }
     
     bool is_knight_move_valid(int from_x, int from_y, int to_x, int to_y) {
@@ -451,10 +473,7 @@ public:
     
     bool sliding_path_check(int from_x, int from_y, int to_x, int to_y) {
         Cords c = sliding_pieces_incrementer(from_x, from_y, sgn<int>(to_x-from_x), sgn<int>(to_y-from_y));
-        if (!(abs(from_x - c.x) >= abs(from_x - to_x) && abs(from_y - c.y) >= abs(from_y - to_y))) {
-            return false;
-        }
-        return true;
+        return (abs(from_x - c.x) >= abs(from_x - to_x) && abs(from_y - c.y) >= abs(from_y - to_y));
     }
     
     bool is_bishop_move_valid(int from_x, int from_y, int to_x, int to_y) {
@@ -507,7 +526,6 @@ public:
             case King:
                 return is_king_move_valid(move, return_move);
                 break;
-                
             default:
                 // All the other pieces
                 switch (squares[move.from_c.y][move.from_c.x].piece) {
@@ -559,11 +577,73 @@ public:
     
     
     void move(Move move) {
+        
+        // Check to see if castling is invalidated
+        
+        // see if rook was captured/moved
+        int eval_x = move.to_c.x;
+        int eval_y = move.to_c.y;
+        for (int i = 0; i < 2; i++) {
+            if (eval_x == 0 && eval_y == 0) {
+                black_can_castle_queenside = false;
+            }
+            else if (eval_x == 7 && eval_y == 0) {
+                black_can_castle_kingside = false;
+            }
+            else if (eval_x == 0 && eval_y == 7) {
+                white_can_castle_queenside = false;
+            }
+            else if (eval_x == 7 && eval_y == 7) {
+                white_can_castle_kingside = false;
+            }
+            
+            eval_x = move.from_c.x;
+            eval_y = move.from_c.y;
+        }
+        
+        // Check king moves
+        if (squares[move.from_c.y][move.from_c.x].piece == King) {
+            if (current_turn == 1) {
+                black_can_castle_kingside = false;
+                black_can_castle_queenside = false;
+            }
+            else {
+                white_can_castle_kingside = false;
+                white_can_castle_queenside = false;
+            }
+        }
+        
+        
+        
+        
         squares[move.to_c.y][move.to_c.x] = squares[move.from_c.y][move.from_c.x];
         Square square;
         square.piece = Empty;
         square.color = 0;
         squares[move.from_c.y][move.from_c.x] = square;
+        
+        // Castling handler
+        int value;
+        if (current_turn == 1) {
+            value = 0;
+        }
+        else {
+            value = 7;
+        }
+        
+        if (move.type == Castle_Kingside) {
+            squares[value][5] = squares[value][7];
+            squares[value][7].piece = Empty;
+            squares[value][7].color = 0;
+        }
+        else if (move.type == Castle_Queenside) {
+            squares[value][3] = squares[value][0];
+            squares[value][0].piece = Empty;
+            squares[value][0].color = 0;
+        }
+        
+        
+        // Do setup for next turn and check for game end.
         
         current_turn = !current_turn;
         
@@ -601,7 +681,6 @@ int locate_sprite_clicked_index(int x, int y, sf::Sprite* sprite) {
     int counter = 0;
     for (std::forward_list<sf::Sprite>::iterator it = sprites.begin() ; it != sprites.end(); ++it) {
         if ((*it).getGlobalBounds().contains(x, y) && (&(*it) != sprite)) {
-//            std::cout << counter << std::endl;
             return counter;
         }
         counter++;
@@ -733,20 +812,40 @@ int main()
                         // This section checks and handles the validity of move, including drawing the sprite
                         if (return_move.type != Illegal) {
                             // If move is valid, set the sprite to the new position, delete the sprite that was residing in the to_location, and register the move with the board.
-                            int temp = locate_sprite_clicked_index(return_move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, return_move.to_c.y * WIDTH/8 + WIDTH/16 - OFFSET, sprite_being_dragged.sprite);
+                            int temp_index = locate_sprite_clicked_index(return_move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, return_move.to_c.y * WIDTH/8 + WIDTH/16 - OFFSET, sprite_being_dragged.sprite);
                             
 //                            std::cout << c.x << ' ' << c.y << std::endl;
                             sprite_being_dragged.sprite->setPosition(return_move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, return_move.to_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
                             
                             
-                            if (temp != -1) {
+                            if (temp_index != -1) {
                                 std::forward_list<sf::Sprite>::iterator it = sprites.before_begin();
-                                std::advance(it, temp);
+                                std::advance(it, temp_index);
                                 sprites.erase_after(it);
                             }
                             
+                            // Castling handler
                             
-                            board.move(move);
+                            int value;
+                            if (board.get_current_turn() == 1) {
+                                value = 0;
+                            }
+                            else {
+                                value = 7;
+                            }
+                            
+                            if (return_move.type == Castle_Kingside) {
+                                sf::Sprite* temp_sprite = locate_sprite_clicked(7 * WIDTH/8 + WIDTH/16 - OFFSET, value * WIDTH/8 + WIDTH/16 - OFFSET);
+                                temp_sprite->setPosition(5 * WIDTH/8 + WIDTH/16 - OFFSET, value * WIDTH/8 + WIDTH/16 - OFFSET);
+                            }
+                            else if (return_move.type == Castle_Queenside) {
+                                sf::Sprite* temp_sprite = locate_sprite_clicked(0 * WIDTH/8 + WIDTH/16 - OFFSET, value * WIDTH/8 + WIDTH/16 - OFFSET);
+                                temp_sprite->setPosition(3 * WIDTH/8 + WIDTH/16 - OFFSET, value * WIDTH/8 + WIDTH/16 - OFFSET);
+                            }
+                            
+                            
+                            
+                            board.move(return_move);
 //                            board.debug_print();
                         }
                         else {
