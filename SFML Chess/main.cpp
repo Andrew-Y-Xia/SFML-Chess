@@ -443,19 +443,40 @@ public:
     }
     
     
+    bool sliding_path_check(int from_x, int from_y, int to_x, int to_y) {
+        Cords c = sliding_pieces_incrementer(from_x, from_y, sgn<int>(to_x-from_x), sgn<int>(to_y-from_y));
+        if (!(abs(from_x - c.x) >= abs(from_x - to_x) && abs(from_y - c.y) >= abs(from_y - to_y))) {
+            return false;
+        }
+        return true;
+    }
+    
     bool is_bishop_move_valid(int from_x, int from_y, int to_x, int to_y) {
         if (abs(from_x - to_x) != abs(from_y - to_y)) {
             return false;
         }
         else {
-            Cords c = sliding_pieces_incrementer(from_x, from_y, sgn<int>(to_x-from_x), sgn<int>(to_y-from_y));
-            if (!(abs(from_x - c.x) >= abs(from_x - to_x) && abs(from_y - c.y) >= abs(from_y - to_y))) {
-                return false;
-            }
-            return true;
+            return sliding_path_check(from_x, from_y, to_x, to_y);
         }
     }
     
+    bool is_rook_move_valid(int from_x, int from_y, int to_x, int to_y) {
+        if (!(from_x - to_x == 0 || from_y - to_y == 0)) {
+            return false;
+        }
+        else {
+            return sliding_path_check(from_x, from_y, to_x, to_y);
+        }
+    }
+    
+    bool is_queen_move_valid(int from_x, int from_y, int to_x, int to_y) {
+        if (abs(from_x - to_x) != abs(from_y - to_y) && !(from_x - to_x == 0 || from_y - to_y == 0)) {
+            return false;
+        }
+        else {
+            return sliding_path_check(from_x, from_y, to_x, to_y);
+        }
+    }
     
     
     bool is_correct_turn(int x, int y) {
@@ -490,6 +511,12 @@ public:
                 case Bishop:
                     return is_bishop_move_valid(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
                     break;
+                case Rook:
+                    return is_rook_move_valid(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
+                    break;
+                case Queen:
+                    return is_queen_move_valid(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
+                    break;
                 default:
                     std::cout << "Something really bad must have happened to get here" << std::endl;
                     break;
@@ -510,6 +537,9 @@ public:
         else if (!(is_within_bounds(move.to_c.x, move.to_c.y))) {
             return_move.type = Illegal;
         }
+        else if (move.from_c.x == move.to_c.x && move.from_c.y == move.to_c.y){
+            return_move.type = Illegal;
+        }
         else if (is_friendly_piece(move.to_c.x, move.to_c.y)) {
             return_move.type = Illegal;
         }
@@ -518,7 +548,6 @@ public:
         }
         
     //    std::cout << x << " " << y << std::endl;
-        
         return return_move;
     }
     
@@ -712,7 +741,7 @@ int main()
                             
                             
                             board.move(move);
-                            board.debug_print();
+//                            board.debug_print();
                         }
                         else {
                             // If move isn't valid, return sprite to original position and do nothing
