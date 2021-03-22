@@ -308,10 +308,12 @@ public:
             }
             y = 7 - (en_passant_square[1] - '0');
             
-            Cords c;
-            c.x = x; c.y = y;
-
-            en_passant_cords = c;
+            en_passant_cords.x = x;
+            en_passant_cords.y = y;
+        }
+        else {
+            en_passant_cords.x = -1;
+            en_passant_cords.y = -1;
         }
     }
     
@@ -453,11 +455,11 @@ public:
             }
         }
         else {
-            if (move.to_c.x == 2 && move.to_c.y == 7 && black_can_castle_queenside) {
+            if (move.to_c.x == 2 && move.to_c.y == 7 && white_can_castle_queenside) {
                 return_move.type = Castle_Queenside;
                 return true;
             }
-            else if (move.to_c.x == 6 && move.to_c.y == 7 && black_can_castle_kingside) {
+            else if (move.to_c.x == 6 && move.to_c.y == 7 && white_can_castle_kingside) {
                 return_move.type = Castle_Kingside;
                 return true;
             }
@@ -518,33 +520,28 @@ public:
     bool is_following_piece_rules(Move move, Move& return_move) {
         
         switch (squares[move.from_c.y][move.from_c.x].piece) {
-            // Pawn and king are special cases, handle them differently
-                
+
             case Pawn:
                 return is_pawn_move_valid(move, return_move);
                 break;
             case King:
                 return is_king_move_valid(move, return_move);
                 break;
+            case Knight:
+                return is_knight_move_valid(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
+                break;
+            case Bishop:
+                return is_bishop_move_valid(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
+                break;
+            case Rook:
+                return is_rook_move_valid(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
+                break;
+            case Queen:
+                return is_queen_move_valid(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
+                break;
             default:
-                // All the other pieces
-                switch (squares[move.from_c.y][move.from_c.x].piece) {
-                case Knight:
-                    return is_knight_move_valid(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
-                    break;
-                case Bishop:
-                    return is_bishop_move_valid(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
-                    break;
-                case Rook:
-                    return is_rook_move_valid(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
-                    break;
-                case Queen:
-                    return is_queen_move_valid(move.from_c.x, move.from_c.y, move.to_c.x, move.to_c.y);
-                    break;
-                default:
-                    std::cout << "Something really bad must have happened to get here" << std::endl;
-                    break;
-            }
+                std::cout << "Something really bad must have happened to get here" << std::endl;
+                break;
         }
         
         return false;
@@ -765,10 +762,10 @@ int main()
             
             // Make checkerboard pattern
             if ((x + y) % 2 == 0) {
-                tempRect.setFillColor(sf::Color(24, 184, 9));
+                tempRect.setFillColor(sf::Color(143, 101, 83));
             }
             else {
-                tempRect.setFillColor(sf::Color(4, 145, 16));
+                tempRect.setFillColor(sf::Color(84, 54, 41));
             }
             
             // move to proper location and draw
