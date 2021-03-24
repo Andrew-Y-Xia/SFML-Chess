@@ -354,6 +354,14 @@ public:
             }
             std::cout << std::endl;
         }
+        
+        std::cout << std::endl;
+        std::cout << "White can castle queenside: " << white_can_castle_queenside << std::endl;
+        std::cout << "White can castle kingside: " << white_can_castle_kingside << std::endl;
+        std::cout << "Black can castle queenside: " << black_can_castle_queenside << std::endl;
+        std::cout << "Black can castle kingside: " << black_can_castle_kingside << std::endl;
+        std::cout << std::endl;
+        std::cout << "Enpassant cords: " << en_passant_cords.x << ' ' << en_passant_cords.y << std::endl;
     }
     
     Cords sliding_pieces_incrementer(int x, int y, int increment_x, int increment_y) {
@@ -389,7 +397,7 @@ public:
     void generate_attacked_squares();
     
     
-    bool is_square_under_attack(int attacker, int x, int y) {
+    bool is_square_under_attack(int x, int y) {
         // TODO: find if square is being attacked.
         return false;
     }
@@ -405,61 +413,68 @@ public:
     
     
     bool is_pawn_move_valid(Move move, Move& return_move) {
-        // TODO: En Passant + First move
+        // TODO: En Passant
         if (current_turn == 1) {
             if (move.to_c.y - move.from_c.y == 1 && move.to_c.x == move.from_c.x && squares[move.to_c.y][move.to_c.x].piece == Empty) {
                 return true;
             }
-            else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == 1 && squares[move.to_c.y][move.to_c.x].piece != Empty) {
-                return true;
+            else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == 1) {
+                if (squares[move.to_c.y][move.to_c.x].piece != Empty) {
+                    return true;
+                }
+                else if (move.to_c.x == en_passant_cords.x && move.to_c.y == en_passant_cords.y) {
+                    return_move.type = En_Passant;
+                    return true;
+                }
             }
             else if (move.from_c.y - move.to_c.y == -2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 1) {
                 return true;
             }
-            else {
-                return false;
-            }
+            return false;
         }
         else {
             if (move.to_c.y - move.from_c.y == -1 && move.to_c.x == move.from_c.x && squares[move.to_c.y][move.to_c.x].piece == Empty) {
                 return true;
             }
-            else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == -1 && squares[move.to_c.y][move.to_c.x].piece != Empty) {
-                return true;
+            else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == -1) {
+                if (squares[move.to_c.y][move.to_c.x].piece != Empty) {
+                    return true;
+                }
+                else if (move.to_c.x == en_passant_cords.x && move.to_c.y == en_passant_cords.y) {
+                    return_move.type = En_Passant;
+                    return true;
+                }
             }
             else if (move.from_c.y - move.to_c.y == 2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 6) {
                 return true;
             }
-            else {
-                return false;
-            }
+            return false;
         }
     }
     
     bool is_king_move_valid(Move move, Move& return_move) {
-        // TODO: Castling
-        if (is_square_under_attack(!current_turn, move.to_c.x, move.to_c.y)) {
+        if (is_square_under_attack(move.to_c.x, move.to_c.y)) {
             return false;
         }
         else if (abs(move.from_c.y - move.to_c.y) <= 1 && abs(move.from_c.x - move.to_c.x) <= 1) {
             return true;
         }
         if (current_turn == 1) {
-            if (move.to_c.x == 2 && move.to_c.y == 0 && black_can_castle_queenside) {
+            if (move.to_c.x == 2 && move.to_c.y == 0 && black_can_castle_queenside && !is_square_under_attack(3, 0)) {
                 return_move.type = Castle_Queenside;
                 return true;
             }
-            else if (move.to_c.x == 6 && move.to_c.y == 0 && black_can_castle_kingside) {
+            else if (move.to_c.x == 6 && move.to_c.y == 0 && black_can_castle_kingside && !is_square_under_attack(5, 0)) {
                 return_move.type = Castle_Kingside;
                 return true;
             }
         }
         else {
-            if (move.to_c.x == 2 && move.to_c.y == 7 && white_can_castle_queenside) {
+            if (move.to_c.x == 2 && move.to_c.y == 7 && white_can_castle_queenside && !is_square_under_attack(3, 7)) {
                 return_move.type = Castle_Queenside;
                 return true;
             }
-            else if (move.to_c.x == 6 && move.to_c.y == 7 && white_can_castle_kingside) {
+            else if (move.to_c.x == 6 && move.to_c.y == 7 && white_can_castle_kingside && !is_square_under_attack(5, 7)) {
                 return_move.type = Castle_Kingside;
                 return true;
             }
@@ -610,9 +625,27 @@ public:
             }
         }
         
+        // Clear En Passant
+        en_passant_cords.x = -1;
+        en_passant_cords.y = -1;
         
         
         
+        
+        // Check if En Passant cords need to be set
+        if (squares[move.from_c.y][move.from_c.x].piece == Pawn && abs(move.from_c.y - move.to_c.y) == 2) {
+            if (current_turn == 1) {
+                en_passant_cords.x = move.to_c.x;
+                en_passant_cords.y = move.to_c.y - 1;
+            }
+            else {
+                en_passant_cords.x = move.to_c.x;
+                en_passant_cords.y = move.to_c.y + 1;
+            }
+        }
+        
+        
+        // Actual act of moving pieces
         squares[move.to_c.y][move.to_c.x] = squares[move.from_c.y][move.from_c.x];
         Square square;
         square.piece = Empty;
@@ -641,6 +674,7 @@ public:
         
         
         // Do setup for next turn and check for game end.
+        
         
         current_turn = !current_turn;
         
@@ -821,23 +855,36 @@ int main()
                                 sprites.erase_after(it);
                             }
                             
-                            // Castling handler
+                            // Castling and en_passant handler
                             
-                            int value;
+                            int castle_side_value, en_passant_side_value;
                             if (board.get_current_turn() == 1) {
-                                value = 0;
+                                en_passant_side_value = 4;
+                                castle_side_value = 0;
                             }
                             else {
-                                value = 7;
+                                en_passant_side_value = 3;
+                                castle_side_value = 7;
                             }
                             
+                            // Castle handler
                             if (return_move.type == Castle_Kingside) {
-                                sf::Sprite* temp_sprite = locate_sprite_clicked(7 * WIDTH/8 + WIDTH/16 - OFFSET, value * WIDTH/8 + WIDTH/16 - OFFSET);
-                                temp_sprite->setPosition(5 * WIDTH/8 + WIDTH/16 - OFFSET, value * WIDTH/8 + WIDTH/16 - OFFSET);
+                                sf::Sprite* temp_sprite = locate_sprite_clicked(7 * WIDTH/8 + WIDTH/16 - OFFSET, castle_side_value * WIDTH/8 + WIDTH/16 - OFFSET);
+                                temp_sprite->setPosition(5 * WIDTH/8 + WIDTH/16 - OFFSET, castle_side_value * WIDTH/8 + WIDTH/16 - OFFSET);
                             }
                             else if (return_move.type == Castle_Queenside) {
-                                sf::Sprite* temp_sprite = locate_sprite_clicked(0 * WIDTH/8 + WIDTH/16 - OFFSET, value * WIDTH/8 + WIDTH/16 - OFFSET);
-                                temp_sprite->setPosition(3 * WIDTH/8 + WIDTH/16 - OFFSET, value * WIDTH/8 + WIDTH/16 - OFFSET);
+                                sf::Sprite* temp_sprite = locate_sprite_clicked(0 * WIDTH/8 + WIDTH/16 - OFFSET, castle_side_value * WIDTH/8 + WIDTH/16 - OFFSET);
+                                temp_sprite->setPosition(3 * WIDTH/8 + WIDTH/16 - OFFSET, castle_side_value * WIDTH/8 + WIDTH/16 - OFFSET);
+                            }
+                            
+                            // En Passant Handler
+                            if (return_move.type == En_Passant) {
+                                temp_index = locate_sprite_clicked_index(move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, en_passant_side_value * WIDTH/8 + WIDTH/16 - OFFSET, NULL);
+                                if (temp_index != -1) {
+                                    std::forward_list<sf::Sprite>::iterator en_p_it = sprites.before_begin();
+                                    std::advance(en_p_it, temp_index);
+                                    sprites.erase_after(en_p_it);
+                                }
                             }
                             
                             
