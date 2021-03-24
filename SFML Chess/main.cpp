@@ -775,6 +775,7 @@ int main()
 
     // create the window
     sf::RenderWindow window(sf::VideoMode(WIDTH, WIDTH), "My window");
+    window.setFramerateLimit(60);
     
     load_textures();
     
@@ -808,7 +809,14 @@ int main()
         }
     }
     
-
+    
+    /*
+    // Measuring FPS
+    sf::Clock clock;
+    int counter = 0;
+    */
+    
+    
     // run the program as long as the window is open
     while (window.isOpen())
     {
@@ -933,6 +941,16 @@ int main()
         
         // end the current frame
         window.display();
+        
+        
+        /*
+        // Measuring FPS
+        counter++;
+        if (counter == 5000) {
+            std::cout << (5000.0 / clock.restart().asSeconds()) << std::endl;
+            counter = 0;
+        }
+        */
     }
 
     return EXIT_SUCCESS;
