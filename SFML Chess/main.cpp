@@ -412,8 +412,7 @@ public:
     }
     
     
-    bool is_pawn_move_valid(Move move, Move& return_move) {
-        // TODO: En Passant
+    bool pawn_rules_subset(const Move &move, Move &return_move) {
         if (current_turn == 1) {
             if (move.to_c.y - move.from_c.y == 1 && move.to_c.x == move.from_c.x && squares[move.to_c.y][move.to_c.x].piece == Empty) {
                 return true;
@@ -452,6 +451,10 @@ public:
         }
     }
     
+    bool is_pawn_move_valid(Move move, Move& return_move) {
+        return pawn_rules_subset(move, return_move);
+    }
+    
     bool is_king_move_valid(Move move, Move& return_move) {
         if (is_square_under_attack(move.to_c.x, move.to_c.y)) {
             return false;
@@ -460,21 +463,21 @@ public:
             return true;
         }
         if (current_turn == 1) {
-            if (move.to_c.x == 2 && move.to_c.y == 0 && black_can_castle_queenside && !is_square_under_attack(3, 0)) {
+            if (move.to_c.x == 2 && move.to_c.y == 0 && black_can_castle_queenside && !is_square_under_attack(3, 0) && squares[0][3].piece == Empty) {
                 return_move.type = Castle_Queenside;
                 return true;
             }
-            else if (move.to_c.x == 6 && move.to_c.y == 0 && black_can_castle_kingside && !is_square_under_attack(5, 0)) {
+            else if (move.to_c.x == 6 && move.to_c.y == 0 && black_can_castle_kingside && !is_square_under_attack(5, 0) && squares[0][5].piece == Empty) {
                 return_move.type = Castle_Kingside;
                 return true;
             }
         }
         else {
-            if (move.to_c.x == 2 && move.to_c.y == 7 && white_can_castle_queenside && !is_square_under_attack(3, 7)) {
+            if (move.to_c.x == 2 && move.to_c.y == 7 && white_can_castle_queenside && !is_square_under_attack(3, 7) && squares[7][3].piece == Empty) {
                 return_move.type = Castle_Queenside;
                 return true;
             }
-            else if (move.to_c.x == 6 && move.to_c.y == 7 && white_can_castle_kingside && !is_square_under_attack(5, 7)) {
+            else if (move.to_c.x == 6 && move.to_c.y == 7 && white_can_castle_kingside && !is_square_under_attack(5, 7) && squares[7][5].piece == Empty) {
                 return_move.type = Castle_Kingside;
                 return true;
             }
@@ -565,7 +568,16 @@ public:
     Move is_move_valid(Move move) {
         Move return_move;
         return_move = move;
-        return_move.type = Normal;
+        std::cout << "Return move here " << return_move.type << std::endl;
+        switch (return_move.type) {
+            case Promote_to_Queen:
+            case Promote_to_Rook:
+            case Promote_to_Bishop:
+            case Promote_to_Knight:
+                break;
+            default:
+                return_move.type = Normal;
+        }
         
         if (!(is_correct_turn(move.from_c.x, move.from_c.y))) {
             return_move.type = Illegal;
@@ -585,6 +597,18 @@ public:
         
     //    std::cout << x << " " << y << std::endl;
         return return_move;
+    }
+    
+    bool is_trying_to_promote(Move move) {
+        int side_value = current_turn == 1 ? 7 : 0;
+        
+        // This is stupid but whatev
+        Move holder_move = move;
+        
+        if (squares[move.from_c.y][move.from_c.x].piece != Pawn || !pawn_rules_subset(move, holder_move) || move.to_c.y != side_value) {
+            return false;
+        }
+        return true;
     }
     
     
@@ -661,15 +685,37 @@ public:
             value = 7;
         }
         
-        if (move.type == Castle_Kingside) {
-            squares[value][5] = squares[value][7];
-            squares[value][7].piece = Empty;
-            squares[value][7].color = 0;
-        }
-        else if (move.type == Castle_Queenside) {
-            squares[value][3] = squares[value][0];
-            squares[value][0].piece = Empty;
-            squares[value][0].color = 0;
+        
+        
+        
+        switch (move.type) {
+            case Promote_to_Queen:
+                squares[move.to_c.y][move.to_c.x].piece = Queen;
+                break;
+            case Promote_to_Rook:
+                squares[move.to_c.y][move.to_c.x].piece = Rook;
+                break;
+            case Promote_to_Bishop:
+                squares[move.to_c.y][move.to_c.x].piece = Bishop;
+                break;
+            case Promote_to_Knight:
+                squares[move.to_c.y][move.to_c.x].piece = Knight;
+                break;
+            case Castle_Queenside:
+                squares[value][3] = squares[value][0];
+                squares[value][0].piece = Empty;
+                squares[value][0].color = 0;
+                break;
+            case Castle_Kingside:
+                squares[value][5] = squares[value][7];
+                squares[value][7].piece = Empty;
+                squares[value][7].color = 0;
+                break;
+            case Illegal:
+                std::cout << "This should not have been reached.";
+                break;
+            default:
+                break;
         }
         
         
@@ -786,6 +832,7 @@ int main()
     board.set_texture_to_pieces();
     
     Move move;
+    bool trying_to_promote = false; bool promote_piece_selected = false; move_type promote_piece;
     
     
     sf::RectangleShape displaygrid[8][8];
@@ -834,9 +881,16 @@ int main()
                     // save the sprite being dragged
                     sprite_being_dragged.sprite = locate_sprite_clicked(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
                     
-                    if (sprite_being_dragged.sprite) {
+                    if (trying_to_promote) {
+                        move.type = Promote_to_Queen;
+                        Move return_move = board.is_move_valid(move);
+                        board.move(return_move);
+                        board.debug_print();
+                        trying_to_promote = false;
+                    }
+                    else if (sprite_being_dragged.sprite) {
                         move.from_c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
-                   }
+                    }
                 }
             }
             else if (event.type == sf::Event::MouseButtonReleased) {
@@ -844,12 +898,15 @@ int main()
                     if (sprite_being_dragged.sprite) {
     
                         move.to_c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                        move.type = Normal;
+                        trying_to_promote = board.is_trying_to_promote(move);
+                        
                         
                         Move return_move = board.is_move_valid(move);
                         
                         
                         // This section checks and handles the validity of move, including drawing the sprite
-                        if (return_move.type != Illegal) {
+                        if (return_move.type != Illegal && !trying_to_promote) {
                             // If move is valid, set the sprite to the new position, delete the sprite that was residing in the to_location, and register the move with the board.
                             int temp_index = locate_sprite_clicked_index(return_move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, return_move.to_c.y * WIDTH/8 + WIDTH/16 - OFFSET, sprite_being_dragged.sprite);
                             
