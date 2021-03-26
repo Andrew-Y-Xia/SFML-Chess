@@ -413,6 +413,7 @@ public:
     
     
     bool pawn_rules_subset(const Move &move, Move &return_move) {
+        // TODO: make section less if-else
         if (current_turn == 1) {
             if (move.to_c.y - move.from_c.y == 1 && move.to_c.x == move.from_c.x && squares[move.to_c.y][move.to_c.x].piece == Empty) {
                 return true;
@@ -426,7 +427,7 @@ public:
                     return true;
                 }
             }
-            else if (move.from_c.y - move.to_c.y == -2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 1) {
+            else if (move.from_c.y - move.to_c.y == -2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 1 && squares[move.to_c.y - 1][move.to_c.x].piece == Empty) {
                 return true;
             }
             return false;
@@ -444,7 +445,7 @@ public:
                     return true;
                 }
             }
-            else if (move.from_c.y - move.to_c.y == 2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 6) {
+            else if (move.from_c.y - move.to_c.y == 2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 6  && squares[move.to_c.y + 1][move.to_c.x].piece == Empty) {
                 return true;
             }
             return false;
@@ -677,12 +678,14 @@ public:
         squares[move.from_c.y][move.from_c.x] = square;
         
         // Castling handler
-        int value;
+        int castle_side_value, en_passant_side_value;
         if (current_turn == 1) {
-            value = 0;
+            castle_side_value = 0;
+            en_passant_side_value = 4;
         }
         else {
-            value = 7;
+            castle_side_value = 7;
+            en_passant_side_value = 3;
         }
         
         
@@ -702,14 +705,17 @@ public:
                 squares[move.to_c.y][move.to_c.x].piece = Knight;
                 break;
             case Castle_Queenside:
-                squares[value][3] = squares[value][0];
-                squares[value][0].piece = Empty;
-                squares[value][0].color = 0;
+                squares[castle_side_value][3] = squares[castle_side_value][0];
+                squares[castle_side_value][0].piece = Empty;
+                squares[castle_side_value][0].color = 0;
                 break;
             case Castle_Kingside:
-                squares[value][5] = squares[value][7];
-                squares[value][7].piece = Empty;
-                squares[value][7].color = 0;
+                squares[castle_side_value][5] = squares[castle_side_value][7];
+                squares[castle_side_value][7].piece = Empty;
+                squares[castle_side_value][7].color = 0;
+                break;
+            case En_Passant:
+                squares[en_passant_side_value][move.to_c.x].piece = Empty;
                 break;
             case Illegal:
                 std::cout << "This should not have been reached.";
