@@ -413,43 +413,32 @@ public:
     
     
     bool pawn_rules_subset(const Move &move, Move &return_move) {
-        // TODO: make section less if-else
+        int side_value, pawn_start_y;
         if (current_turn == 1) {
-            if (move.to_c.y - move.from_c.y == 1 && move.to_c.x == move.from_c.x && squares[move.to_c.y][move.to_c.x].piece == Empty) {
-                return true;
-            }
-            else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == 1) {
-                if (squares[move.to_c.y][move.to_c.x].piece != Empty) {
-                    return true;
-                }
-                else if (move.to_c.x == en_passant_cords.x && move.to_c.y == en_passant_cords.y) {
-                    return_move.type = En_Passant;
-                    return true;
-                }
-            }
-            else if (move.from_c.y - move.to_c.y == -2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 1 && squares[move.to_c.y - 1][move.to_c.x].piece == Empty) {
-                return true;
-            }
-            return false;
+            side_value = 1;
+            pawn_start_y = 1;
         }
         else {
-            if (move.to_c.y - move.from_c.y == -1 && move.to_c.x == move.from_c.x && squares[move.to_c.y][move.to_c.x].piece == Empty) {
-                return true;
-            }
-            else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == -1) {
-                if (squares[move.to_c.y][move.to_c.x].piece != Empty) {
-                    return true;
-                }
-                else if (move.to_c.x == en_passant_cords.x && move.to_c.y == en_passant_cords.y) {
-                    return_move.type = En_Passant;
-                    return true;
-                }
-            }
-            else if (move.from_c.y - move.to_c.y == 2 && move.to_c.x - move.from_c.x == 0 && move.from_c.y == 6  && squares[move.to_c.y + 1][move.to_c.x].piece == Empty) {
-                return true;
-            }
-            return false;
+            side_value = -1;
+            pawn_start_y = 6;
         }
+        
+        if (move.to_c.y - move.from_c.y == side_value && move.to_c.x == move.from_c.x && squares[move.to_c.y][move.to_c.x].piece == Empty) {
+            return true;
+        }
+        else if (abs(move.from_c.x - move.to_c.x) == 1 && move.to_c.y - move.from_c.y == side_value) {
+            if (squares[move.to_c.y][move.to_c.x].piece != Empty) {
+                return true;
+            }
+            else if (move.to_c.x == en_passant_cords.x && move.to_c.y == en_passant_cords.y) {
+                return_move.type = En_Passant;
+                return true;
+            }
+        }
+        else if (move.from_c.y - move.to_c.y == -2 * side_value && move.to_c.x - move.from_c.x == 0 && move.from_c.y == pawn_start_y && squares[move.to_c.y - side_value][move.to_c.x].piece == Empty) {
+            return true;
+        }
+        return false;
     }
     
     bool is_pawn_move_valid(Move move, Move& return_move) {
