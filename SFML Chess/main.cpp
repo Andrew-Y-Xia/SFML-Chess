@@ -72,6 +72,38 @@ template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
 
+void set_single_texture(int color, piece_type piece, sf::Sprite& sprite) {
+    int addon;
+    if (color == 0) {
+        addon = 0;
+    }
+    else {
+        addon = 6;
+    }
+    switch (piece) {
+        case Bishop:
+            sprite.setTexture(textures[0 + addon]);
+            break;
+        case King:
+            sprite.setTexture(textures[1 + addon]);
+            break;
+        case Knight:
+            sprite.setTexture(textures[2 + addon]);
+            break;
+        case Pawn:
+            sprite.setTexture(textures[3 + addon]);
+            break;
+        case Queen:
+            sprite.setTexture(textures[4 + addon]);
+            break;
+        case Rook:
+            sprite.setTexture(textures[5 + addon]);
+            break;
+        case Empty:
+            break;
+    }
+}
+
 
 class Board {
 private:
@@ -114,44 +146,17 @@ public:
     }
     
     void set_texture_to_pieces() {
-        int addon;
         Square current_square;
         
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
-                addon = 0;
                 current_square = squares[y][x];
-
-                if (current_square.color) {
-                    addon = 6;
-                }
+                
                 if (current_square.piece != Empty) {
                     
                     sf::Sprite sprite;
                     
-                    switch (current_square.piece) {
-                        case Bishop:
-                            sprite.setTexture(textures[0 + addon]);
-                            break;
-                        case King:
-                            sprite.setTexture(textures[1 + addon]);
-                            break;
-                        case Knight:
-                            sprite.setTexture(textures[2 + addon]);
-                            break;
-                        case Pawn:
-                            sprite.setTexture(textures[3 + addon]);
-                            break;
-                        case Queen:
-                            sprite.setTexture(textures[4 + addon]);
-                            break;
-                        case Rook:
-                            sprite.setTexture(textures[5 + addon]);
-                            break;
-                        case Empty:
-                            break;
-                    }
-                    
+                    set_single_texture(current_square.color, current_square.piece, sprite);
                     
                     
                     sprite.setOrigin(sf::Vector2f(30, 30));
@@ -744,7 +749,7 @@ void draw_pieces(sf::RenderWindow* window) {
 
 
 void draw_promotion_pieces(sf::RenderWindow* window, int current_turn) {
-    if (!current_turn) {
+    if (current_turn) {
         for (std::forward_list<sf::Sprite>::iterator it = promotion_sprites_black.begin() ; it != sprites.end(); ++it) {
             window->draw(*it);
         }
@@ -823,39 +828,38 @@ void load_textures() {
     textures[12] = blank;
 }
 
-void set_single_promotion_texture(int addon, int i, sf::Sprite& sprite) {
+void set_single_promotion_texture(int color, int i, sf::Sprite& sprite) {
+    piece_type piece;
     switch (i) {
         case 0:
-            sprite.setTexture(textures[4 + addon]);
+            piece = Queen;
             break;
         case 1:
-            sprite.setTexture(textures[5 + addon]);
+            piece = Rook;
             break;
         case 2:
-            sprite.setTexture(textures[0 + addon]);
+            piece = Bishop;
             break;
         case 3:
-            sprite.setTexture(textures[2 + addon]);
+            piece = Knight;
+            break;
+        default:
+            std::cout << "Should not have been reached. " << std::endl;
             break;
     }
-    
-    sprite.setOrigin(sf::Vector2f(30, 30));
-    sprite.setPosition(i * WIDTH/8 + WIDTH/16 + WIDTH / 4, WIDTH / 2);
-    sprite.setScale(sf::Vector2f(SCALE, SCALE));
+    set_single_texture(color, piece, sprite);
 }
 
 void set_promotional_sprites() {
-    int addon;
     for (int c = 0; c < 2; c++) {
-        if (c == 0) {
-            addon = 6;
-        }
-        else {
-            addon = 0;
-        }
         for (int i = 0; i < 4; i++) {
             sf::Sprite sprite;
-            set_single_promotion_texture(addon, i, sprite);
+            set_single_promotion_texture(c, i, sprite);
+            
+            sprite.setOrigin(sf::Vector2f(30, 30));
+            sprite.setPosition(i * WIDTH/8 + WIDTH/16 + WIDTH / 4, WIDTH / 2);
+            sprite.setScale(sf::Vector2f(SCALE, SCALE));
+            
             if (c == 0) {
                 promotion_sprites_black.push_front(sprite);
             }
@@ -1002,15 +1006,8 @@ int main()
 //                            board.debug_print();
                             
                             sf::Sprite* sprite = locate_sprite_clicked(sprites, validated_move.from_c.x * WIDTH/8 + WIDTH/16 - OFFSET, validated_move.from_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
-                            std::cout << validated_move.from_c.x << ' ' << validated_move.from_c.y;
-                            int addon;
-                            if (board.get_current_turn() == 0) {
-                                addon = 6;
-                            }
-                            else {
-                                addon = 0;
-                            }
-                            set_single_promotion_texture(addon, 3 - temp_index, *sprite);
+                            
+                            set_single_promotion_texture(!board.get_current_turn(), 3 - temp_index, *sprite);
                             normal_move_sprite_handler(validated_move, sprite);
                             
                             trying_to_promote = false;
