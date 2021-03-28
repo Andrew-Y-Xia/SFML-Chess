@@ -16,11 +16,12 @@
 
 // Global vars:
 sf::Texture textures[13];
-std::forward_list<sf::Sprite> sprites;
+std::forward_list<sf::Sprite> sprites, promotion_sprites_white, promotion_sprites_black;
 
 
 struct Cords {
-    int x, y;
+    int x: 8;
+    int y: 8;
 };
 
 
@@ -453,7 +454,7 @@ public:
             return true;
         }
         if (current_turn == 1) {
-            if (move.to_c.x == 2 && move.to_c.y == 0 && black_can_castle_queenside && !is_square_under_attack(3, 0) && squares[0][3].piece == Empty) {
+            if (move.to_c.x == 2 && move.to_c.y == 0 && black_can_castle_queenside && !is_square_under_attack(3, 0) && squares[0][3].piece == Empty && squares[0][1].piece == Empty) {
                 validated_move.type = Castle_Queenside;
                 return true;
             }
@@ -463,7 +464,7 @@ public:
             }
         }
         else {
-            if (move.to_c.x == 2 && move.to_c.y == 7 && white_can_castle_queenside && !is_square_under_attack(3, 7) && squares[7][3].piece == Empty) {
+            if (move.to_c.x == 2 && move.to_c.y == 7 && white_can_castle_queenside && !is_square_under_attack(3, 7) && squares[7][3].piece == Empty && squares[7][1].piece == Empty) {
                 validated_move.type = Castle_Queenside;
                 return true;
             }
@@ -742,9 +743,23 @@ void draw_pieces(sf::RenderWindow* window) {
 }
 
 
+void draw_promotion_pieces(sf::RenderWindow* window, int current_turn) {
+    if (!current_turn) {
+        for (std::forward_list<sf::Sprite>::iterator it = promotion_sprites_black.begin() ; it != sprites.end(); ++it) {
+            window->draw(*it);
+        }
+    }
+    else {
+        for (std::forward_list<sf::Sprite>::iterator it = promotion_sprites_white.begin() ; it != sprites.end(); ++it) {
+            window->draw(*it);
+        }
+    }
+}
 
-sf::Sprite* locate_sprite_clicked(int x, int y) {
-    for (std::forward_list<sf::Sprite>::iterator it = sprites.begin() ; it != sprites.end(); ++it) {
+
+
+sf::Sprite* locate_sprite_clicked(std::forward_list<sf::Sprite>& list, int x, int y) {
+    for (std::forward_list<sf::Sprite>::iterator it = list.begin() ; it != list.end(); ++it) {
         if ((*it).getGlobalBounds().contains(x, y)) {
             return (&(*it));
         }
@@ -754,9 +769,9 @@ sf::Sprite* locate_sprite_clicked(int x, int y) {
 
 
 
-int locate_sprite_clicked_index(int x, int y, sf::Sprite* sprite) {
+int locate_sprite_clicked_index(std::forward_list<sf::Sprite>& list, int x, int y, sf::Sprite* sprite) {
     int counter = 0;
-    for (std::forward_list<sf::Sprite>::iterator it = sprites.begin() ; it != sprites.end(); ++it) {
+    for (std::forward_list<sf::Sprite>::iterator it = list.begin() ; it != list.end(); ++it) {
         if ((*it).getGlobalBounds().contains(x, y) && (&(*it) != sprite)) {
             return counter;
         }
@@ -808,14 +823,57 @@ void load_textures() {
     textures[12] = blank;
 }
 
+void set_single_promotion_texture(int addon, int i, sf::Sprite& sprite) {
+    switch (i) {
+        case 0:
+            sprite.setTexture(textures[4 + addon]);
+            break;
+        case 1:
+            sprite.setTexture(textures[5 + addon]);
+            break;
+        case 2:
+            sprite.setTexture(textures[0 + addon]);
+            break;
+        case 3:
+            sprite.setTexture(textures[2 + addon]);
+            break;
+    }
+    
+    sprite.setOrigin(sf::Vector2f(30, 30));
+    sprite.setPosition(i * WIDTH/8 + WIDTH/16 + WIDTH / 4, WIDTH / 2);
+    sprite.setScale(sf::Vector2f(SCALE, SCALE));
+}
+
+void set_promotional_sprites() {
+    int addon;
+    for (int c = 0; c < 2; c++) {
+        if (c == 0) {
+            addon = 6;
+        }
+        else {
+            addon = 0;
+        }
+        for (int i = 0; i < 4; i++) {
+            sf::Sprite sprite;
+            set_single_promotion_texture(addon, i, sprite);
+            if (c == 0) {
+                promotion_sprites_black.push_front(sprite);
+            }
+            else {
+                promotion_sprites_white.push_front(sprite);
+            }
+        }
+    }
+}
+
 
 void castle_sprite_handler(int castle_side_value, Move validated_move) {
     if (validated_move.type == Castle_Kingside) {
-        sf::Sprite* temp_sprite = locate_sprite_clicked(7 * WIDTH/8 + WIDTH/16 - OFFSET, castle_side_value * WIDTH/8 + WIDTH/16 - OFFSET);
+        sf::Sprite* temp_sprite = locate_sprite_clicked(sprites, 7 * WIDTH/8 + WIDTH/16 - OFFSET, castle_side_value * WIDTH/8 + WIDTH/16 - OFFSET);
         temp_sprite->setPosition(5 * WIDTH/8 + WIDTH/16 - OFFSET, castle_side_value * WIDTH/8 + WIDTH/16 - OFFSET);
     }
     else if (validated_move.type == Castle_Queenside) {
-        sf::Sprite* temp_sprite = locate_sprite_clicked(0 * WIDTH/8 + WIDTH/16 - OFFSET, castle_side_value * WIDTH/8 + WIDTH/16 - OFFSET);
+        sf::Sprite* temp_sprite = locate_sprite_clicked(sprites, 0 * WIDTH/8 + WIDTH/16 - OFFSET, castle_side_value * WIDTH/8 + WIDTH/16 - OFFSET);
         temp_sprite->setPosition(3 * WIDTH/8 + WIDTH/16 - OFFSET, castle_side_value * WIDTH/8 + WIDTH/16 - OFFSET);
     }
 }
@@ -825,7 +883,7 @@ void castle_sprite_handler(int castle_side_value, Move validated_move) {
 void en_passant_sprite_handler(int en_passant_side_value, Move move, Move validated_move) {
     int temp_index;
     if (validated_move.type == En_Passant) {
-        temp_index = locate_sprite_clicked_index(move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, en_passant_side_value * WIDTH/8 + WIDTH/16 - OFFSET, NULL);
+        temp_index = locate_sprite_clicked_index(sprites, move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, en_passant_side_value * WIDTH/8 + WIDTH/16 - OFFSET, NULL);
         if (temp_index != -1) {
             std::forward_list<sf::Sprite>::iterator en_p_it = sprites.before_begin();
             std::advance(en_p_it, temp_index);
@@ -836,7 +894,7 @@ void en_passant_sprite_handler(int en_passant_side_value, Move move, Move valida
 
 
 void normal_move_sprite_handler(Move validated_move, sf::Sprite* sprite_being_dragged) {
-    int temp_index = locate_sprite_clicked_index(validated_move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, validated_move.to_c.y * WIDTH/8 + WIDTH/16 - OFFSET, sprite_being_dragged);
+    int temp_index = locate_sprite_clicked_index(sprites, validated_move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, validated_move.to_c.y * WIDTH/8 + WIDTH/16 - OFFSET, sprite_being_dragged);
     
 //    std::cout << c.x << ' ' << c.y << std::endl;
     sprite_being_dragged->setPosition(validated_move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, validated_move.to_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
@@ -861,7 +919,7 @@ int main()
     window.setFramerateLimit(60);
     
     load_textures();
-
+    set_promotional_sprites();
     
     
     sf::RectangleShape displaygrid[8][8];
@@ -885,9 +943,15 @@ int main()
         }
     }
     
+    // Create the promotion rectangle
+    sf::RectangleShape promotion_rectangle(sf::Vector2f(WIDTH/2, WIDTH/8));
+    promotion_rectangle.setFillColor(sf::Color(26, 110, 8, 200));
+    promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
+    
     // init the chess board
     Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
+//    std::cout << sizeof(board);
 
     board.set_texture_to_pieces();
     
@@ -914,14 +978,47 @@ int main()
                 if (event.mouseButton.button == sf::Mouse::Left && !sprite_being_dragged)
                 {
                     if (trying_to_promote) {
-                        move.type = Promote_to_Queen;
-                        validated_move = board.request_move(move);
-//                        board.debug_print();
-                        trying_to_promote = false;
+                        int temp_index = locate_sprite_clicked_index(promotion_sprites_black, sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y, NULL);
+                        if (temp_index != -1) {
+                            switch (temp_index) {
+                                case 3:
+                                    move.type = Promote_to_Queen;
+                                    break;
+                                case 2:
+                                    move.type = Promote_to_Rook;
+                                    break;
+                                case 1:
+                                    move.type = Promote_to_Bishop;
+                                    break;
+                                case 0:
+                                    move.type = Promote_to_Knight;
+                                    break;
+                                default:
+                                    std::cout << "Something went wrong about promotion. " << std::endl;
+                                    break;
+                            }
+
+                            validated_move = board.request_move(move);
+//                            board.debug_print();
+                            
+                            sf::Sprite* sprite = locate_sprite_clicked(sprites, validated_move.from_c.x * WIDTH/8 + WIDTH/16 - OFFSET, validated_move.from_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
+                            std::cout << validated_move.from_c.x << ' ' << validated_move.from_c.y;
+                            int addon;
+                            if (board.get_current_turn() == 0) {
+                                addon = 6;
+                            }
+                            else {
+                                addon = 0;
+                            }
+                            set_single_promotion_texture(addon, 3 - temp_index, *sprite);
+                            normal_move_sprite_handler(validated_move, sprite);
+                            
+                            trying_to_promote = false;
+                        }
                     }
                     else {
                         // save the sprite being dragged
-                        sprite_being_dragged = locate_sprite_clicked(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                        sprite_being_dragged = locate_sprite_clicked(sprites, sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
                         if (sprite_being_dragged) {
                             move.from_c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
                         }
@@ -1018,6 +1115,11 @@ int main()
         // Draw the pieces
         draw_pieces(&window);
         
+
+        if (trying_to_promote) {
+            window.draw(promotion_rectangle);
+            draw_promotion_pieces(&window, !board.get_current_turn());
+        }
         
         
         
