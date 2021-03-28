@@ -462,31 +462,26 @@ public:
     }
     
     bool is_king_move_valid(Move move, Move& validated_move) {
+        int home_side_value;
+        if (current_turn == 1) {
+            home_side_value = 0;
+        }
+        else {
+            home_side_value = 7;
+        }
         if (is_square_under_attack(move.to_c.x, move.to_c.y)) {
             return false;
         }
         else if (abs(move.from_c.y - move.to_c.y) <= 1 && abs(move.from_c.x - move.to_c.x) <= 1) {
             return true;
         }
-        if (current_turn == 1) {
-            if (move.to_c.x == 2 && move.to_c.y == 0 && black_can_castle_queenside && !is_square_under_attack(3, 0) && squares[0][3].piece == Empty && squares[0][1].piece == Empty) {
-                validated_move.type = Castle_Queenside;
-                return true;
-            }
-            else if (move.to_c.x == 6 && move.to_c.y == 0 && black_can_castle_kingside && !is_square_under_attack(5, 0) && squares[0][5].piece == Empty) {
-                validated_move.type = Castle_Kingside;
-                return true;
-            }
+        else if (move.to_c.x == 2 && move.to_c.y == home_side_value && black_can_castle_queenside && !is_square_under_attack(3, home_side_value) && squares[home_side_value][3].piece == Empty && squares[home_side_value][1].piece == Empty) {
+            validated_move.type = Castle_Queenside;
+            return true;
         }
-        else {
-            if (move.to_c.x == 2 && move.to_c.y == 7 && white_can_castle_queenside && !is_square_under_attack(3, 7) && squares[7][3].piece == Empty && squares[7][1].piece == Empty) {
-                validated_move.type = Castle_Queenside;
-                return true;
-            }
-            else if (move.to_c.x == 6 && move.to_c.y == 7 && white_can_castle_kingside && !is_square_under_attack(5, 7) && squares[7][5].piece == Empty) {
-                validated_move.type = Castle_Kingside;
-                return true;
-            }
+        else if (move.to_c.x == 6 && move.to_c.y == home_side_value && black_can_castle_kingside && !is_square_under_attack(5, home_side_value) && squares[home_side_value][5].piece == Empty) {
+            validated_move.type = Castle_Kingside;
+            return true;
         }
         
         return false;
