@@ -448,6 +448,16 @@ public:
     }
     
     bool is_pawn_move_valid(Move move, Move& validated_move) {
+        int opposite_side_value;
+        if (current_turn == 1) {
+            opposite_side_value = 7;
+        }
+        else {
+            opposite_side_value = 0;
+        }
+        if (move.type == Normal && move.to_c.y == opposite_side_value) {
+            return false;
+        }
         return pawn_rules_subset(move, validated_move);
     }
     
@@ -916,7 +926,7 @@ int main()
     sprite_being_dragged = NULL;
     
     Move move, validated_move;
-    bool trying_to_promote = false; move_type promote_piece;
+    bool trying_to_promote = false;
 
     // create the window
     sf::RenderWindow window(sf::VideoMode(WIDTH, WIDTH), "My window");
