@@ -3,7 +3,7 @@
 #include <string>
 #include <ctype.h>
 #include <forward_list>
-#include <sparsehash/dense_hash_map>
+#include <sparsehash/dense_hash_set>
 
 #include "ResourcePath.hpp"
 
@@ -23,6 +23,36 @@ struct Cords {
     int x: 8;
     int y: 8;
 };
+
+ 
+namespace std
+{
+    template<>
+    struct hash<Cords>
+    {
+        std::size_t operator()(Cords const& c) const noexcept
+        {
+            std::size_t h1 = std::hash<int>{}(c.x);
+            std::size_t h2 = std::hash<int>{}(c.y);
+            size_t seed = 42;
+            seed ^= h1 + 0x9e3779b97f4a7c15 + (seed << 6) + (seed >> 2);
+            seed ^= h2 + 0x9e3779b97f4a7c15 + (seed << 6) + (seed >> 2);; // or use h1 ^ (h2 << 1)
+            return seed;
+        }
+    };
+}
+
+struct eq {
+  bool operator()(Cords c1, Cords c2) const {
+    return (c1.x == c2.x && c1.y == c2.y);
+  }
+};
+
+template <class T, class Sub>
+bool lookup(T Set, Sub word) {
+    typename T::const_iterator it = Set.find(word);
+    return it != Set.end();
+}
 
 
 // What type of piece is it?
@@ -64,6 +94,12 @@ struct Square {
     piece_type piece: 7;
     // 0 is white, 1 is black
     unsigned int color: 1;
+    google::dense_hash_set<Cords, std::hash<Cords>, eq> attacked_by, attacking;
+    
+    Square() {
+        attacked_by.set_empty_key(Cords{-1,-1});
+        attacking.set_empty_key(Cords{-1,-1});
+    }
 };
 
 
@@ -104,6 +140,12 @@ void set_single_texture(int color, piece_type piece, sf::Sprite& sprite) {
     }
 }
 
+void debug_print_moves(std::forward_list<Move> moves) {
+    for (std::forward_list<Move>::iterator it = moves.begin() ; it != moves.end(); ++it) {
+        std::cout << "From: " << it->from_c.x << ", " << it->from_c.y << "  |  To: " << it->to_c.x << ", " << it->to_c.y << std::endl;
+    }
+}
+
 
 class Board {
 private:
@@ -123,8 +165,6 @@ private:
     
     Cords en_passant_cords;
     
-    // Attacked by enemy, based off turn
-    std::forward_list<Cords> attacked_squares;
     
 public:
     Board() {
@@ -133,6 +173,7 @@ public:
                 Square current_square;
                 current_square.piece = Empty;
                 current_square.color = 0;
+                squares[y][x] = current_square;
             }
         }
     }
@@ -401,20 +442,117 @@ public:
     
     
     void generate_attacked_squares();
+
+
+    std::forward_list<Move> generate_moves(int side, bool ignore_turns = false, bool pseudo_legal = false) {
+        std::forward_list<Move> verified_moves;
+
+        std::forward_list<Move> piece_moves;
+        
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                
+                switch (squares[y][x].piece) {
     
+                    case Empty:
+                        continue;
+                        break;
+                    case Pawn:
+                        piece_moves = generate_pawn_paths(x, y);
+                        debug_print_moves(piece_moves);
+                        break;
+                    case Knight:
+                        break;
+                    case Bishop:
+                        break;
+                    case Rook:
+                        break;
+                    case Queen:
+                        break;
+                    case King:
+                        break;
+                    default:
+                        std::cout << "Should not have been reached at generate_moves." << std::endl;
+                }
+
+                for (std::forward_list<Move>::iterator it = piece_moves.begin() ; it != piece_moves.end(); ++it) {
+                    if (!(is_correct_turn((*it).from_c.x, (*it).from_c.y)) && !ignore_turns) {
+                        continue;
+                    }
+                    else if (!(is_within_bounds((*it).to_c.x, (*it).to_c.y))) {
+                        std::cout << "Piece should not have been outside of bounds, check path-gens" << std::endl;
+                        continue;
+                    }
+                    // Equality cords check
+                    else if ((*it).from_c.x == (*it).to_c.x && (*it).from_c.y == (*it).to_c.y){
+                        continue;
+                    }
+                    else if (is_friendly_piece((*it).to_c.x, (*it).to_c.y), true) {
+                        continue;
+                    }
+                    verified_moves.push_front(*it);
+                }
+            }
+        }
+        debug_print_moves(verified_moves);
+        return verified_moves;
+    }
+    
+    std::forward_list<Move> generate_pawn_paths(int x, int y) {
+        int direction_value, pawn_start_y;
+        std::forward_list<Move> moves;
+        Move move;
+        Cords orig = Cords {x, y};
+        move.from_c = orig;
+        move.to_c = orig;
+        move.type = Normal;
+        
+        if (squares[y][x].color == 1) {
+            direction_value = 1;
+            pawn_start_y = 1;
+        }
+        else {
+            direction_value = -1;
+            pawn_start_y = 6;
+        }
+        if (squares[y + direction_value][x].piece == Empty) {
+            move.to_c.y += direction_value;
+            moves.push_front(move);
+            move.to_c = orig;
+            if (y == pawn_start_y && squares[y + direction_value * 2][x].piece == Empty) {
+                move.to_c.y += direction_value * 2;
+                moves.push_front(move);
+                move.to_c = orig;
+            }
+        }
+        for (int i = -1; i < 3; i+=2) {
+            if (is_within_bounds(x + i, y + direction_value)) {
+                if (squares[y + direction_value][x + i].piece != Empty) {
+                    move.to_c.y += direction_value;
+                    move.to_c.x += i;
+                    moves.push_front(move);
+                    move.to_c = orig;
+                }
+                else if (en_passant_cords.y == y + direction_value && en_passant_cords.x == x + i) {
+                    move.to_c.y += direction_value;
+                    move.to_c.x += i;
+                    moves.push_front(move);
+                    move.to_c = orig;
+                }
+            }
+        }
+        
+        return moves;
+    }
+
     
     bool is_square_under_attack(int x, int y) {
         // TODO: find if square is being attacked.
         return false;
     }
     
-    bool is_friendly_piece(int x, int y) {
-        if (squares[y][x].piece != Empty && squares[y][x].color == current_turn) {
-            return true;
-        }
-        else {
-            return false;
-        }
+    bool is_friendly_piece(int x, int y, bool ignore_turns = false) {
+        return (squares[y][x].piece != Empty && (squares[y][x].color == current_turn || ignore_turns));
     }
     
     
@@ -607,6 +745,18 @@ public:
         Move holder_move = move;
         
         if (squares[move.from_c.y][move.from_c.x].piece != Pawn || !pawn_rules_subset(move, holder_move) || move.to_c.y != side_value) {
+            return false;
+        }
+        if (!(is_correct_turn(move.from_c.x, move.from_c.y))) {
+            return false;
+        }
+        else if (!(is_within_bounds(move.to_c.x, move.to_c.y))) {
+            return false;
+        }
+        else if (move.from_c.x == move.to_c.x && move.from_c.y == move.to_c.y){
+            return false;
+        }
+        else if (is_friendly_piece(move.to_c.x, move.to_c.y)) {
             return false;
         }
         return true;
@@ -915,8 +1065,8 @@ void normal_move_sprite_handler(Move validated_move, sf::Sprite* sprite_being_dr
 }
 
 
-int main()
-{
+int main() {
+    
     sf::Sprite* sprite_being_dragged;
     sprite_being_dragged = NULL;
     
@@ -961,6 +1111,7 @@ int main()
     Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
+//    board.generate_moves(board.get_current_turn());
 
     board.set_texture_to_pieces();
     
