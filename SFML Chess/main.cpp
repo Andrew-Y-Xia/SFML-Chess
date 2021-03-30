@@ -480,9 +480,10 @@ public:
                         continue;
                         break;
                     case Pawn:
-                        generate_pawn_paths(moves, x, y);
+                        generate_pawn_moves(moves, x, y, ignore_turns);
                         break;
                     case Knight:
+                        generate_knight_moves(moves, x, y, ignore_turns);
                         break;
                     case Bishop:
                         break;
@@ -491,7 +492,7 @@ public:
                     case Queen:
                         break;
                     case King:
-                        generate_king_paths(moves, x, y);
+                        generate_king_moves(moves, x, y, ignore_turns);
                         break;
                     default:
                         std::cout << "Should not have been reached at generate_moves." << std::endl;
@@ -503,7 +504,7 @@ public:
         return moves;
     }
     
-    void generate_pawn_paths(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    void generate_pawn_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
         
         int direction_value, pawn_start_y, opposite_side_value;
         Cords orig = Cords {x, y};
@@ -591,7 +592,7 @@ public:
         }
     }
     
-    void generate_king_paths(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    void generate_king_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
             return;
         }
@@ -633,6 +634,30 @@ public:
             move.to_c = orig;
             move.type = Normal;
         }
+    }
+    
+    void generate_knight_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        if (!(is_correct_turn(x, y)) && !ignore_turns) {
+            return;
+        }
+        
+        Cords orig = Cords {x, y};
+        Move move = {orig, orig, Normal};
+        
+        for (int i = -1; i < 2; i += 2) {
+            for (int j = -1; j < 2; j += 2) {
+                move.to_c.x += 1 * j;
+                move.to_c.y += 2 * i;
+                reg_piece_handle_push_move(moves, move);
+                move.to_c = orig;
+                
+                move.to_c.x += 2 * j;
+                move.to_c.y += 1 * i;
+                reg_piece_handle_push_move(moves, move);
+                move.to_c = orig;
+            }
+        }
+        
     }
     
     bool is_square_under_attack(int x, int y) {
