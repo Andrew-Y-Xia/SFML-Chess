@@ -443,15 +443,34 @@ public:
         } while (1);
     }
     
+    void generate_sliding_paths(std::forward_list<Move>& moves, Cords incrementer);
+    
     
     void generate_attacked_squares();
 
 
+    bool does_pass_basic_piece_checks(Move move, bool ignore_turns = false) {
+        if (!(is_correct_turn(move.from_c.x, move.from_c.y)) && !ignore_turns) {
+            return false;
+        }
+        else if (!(is_within_bounds(move.to_c.x, move.to_c.y))) {
+            return false;
+        }
+        // Equality cords check
+        else if (move.from_c.x == move.to_c.x && move.from_c.y == move.to_c.y){
+            return false;
+        }
+        else if (is_friendly_piece(move.to_c.x, move.to_c.y) && !ignore_turns){
+            return false;
+        }
+        else {
+            return true;
+        }
+    }
+    
     std::forward_list<Move> generate_moves(int side, bool ignore_turns = false, bool pseudo_legal = false) {
-        std::forward_list<Move> verified_moves;
+        std::forward_list<Move> moves;
 
-        std::forward_list<Move> piece_moves;
-        
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
 
@@ -461,7 +480,7 @@ public:
                         continue;
                         break;
                     case Pawn:
-                        piece_moves = generate_pawn_paths(x, y);
+                        generate_pawn_paths(moves, x, y);
                         break;
                     case Knight:
                         break;
@@ -472,46 +491,23 @@ public:
                     case Queen:
                         break;
                     case King:
+                        generate_king_paths(moves, x, y);
                         break;
                     default:
                         std::cout << "Should not have been reached at generate_moves." << std::endl;
                 }
 
-                for (std::forward_list<Move>::iterator it = piece_moves.begin() ; it != piece_moves.end(); ++it) {
-                    if (!(is_correct_turn((*it).from_c.x, (*it).from_c.y)) && !ignore_turns) {
-                        continue;
-                    }
-                    else if (!(is_within_bounds((*it).to_c.x, (*it).to_c.y))) {
-                        std::cout << "Piece should not have been outside of bounds, check path-gens" << std::endl;
-                        continue;
-                    }
-                    // Equality cords check
-                    else if ((*it).from_c.x == (*it).to_c.x && (*it).from_c.y == (*it).to_c.y){
-                        continue;
-                    }
-                    else if (is_friendly_piece((*it).to_c.x, (*it).to_c.y) && !ignore_turns){
-                        continue;
-                    }
-                    else {
-                        verified_moves.push_front(*it);
-                        continue;
-                    }
-                }
-                piece_moves.clear();
             }
         }
-//        debug_print_moves(verified_moves);
-        return verified_moves;
+        debug_print_moves(moves);
+        return moves;
     }
     
-    std::forward_list<Move> generate_pawn_paths(int x, int y) {
+    void generate_pawn_paths(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        
         int direction_value, pawn_start_y, opposite_side_value;
-        std::forward_list<Move> moves;
-        Move move;
         Cords orig = Cords {x, y};
-        move.from_c = orig;
-        move.to_c = orig;
-        move.type = Normal;
+        Move move = {orig, orig, Normal};
         
         // Switch some increment values depending on side
         if (squares[y][x].color == 1) {
@@ -556,11 +552,13 @@ public:
                 }
             }
         }
-        
-        return moves;
     }
     
     void pawn_path_handle_push_move(std::forward_list<Move>& moves, Move& move) {
+        if (!does_pass_basic_piece_checks(move)) {
+            return;
+        }
+        
         int opposite_side_value;
         if (squares[move.from_c.y][move.from_c.x].color == 1) {
             opposite_side_value = 7;
@@ -583,7 +581,59 @@ public:
             moves.push_front(move);
         }
     }
-
+    
+    void reg_piece_handle_push_move(std::forward_list<Move>& moves, Move& move) {
+        if (!does_pass_basic_piece_checks(move)) {
+            return;
+        }
+        else {
+            moves.push_front(move);
+        }
+    }
+    
+    void generate_king_paths(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        if (!(is_correct_turn(x, y)) && !ignore_turns) {
+            return;
+        }
+        
+        Cords orig = Cords {x, y};
+        Move move = {orig, orig, Normal};
+        
+        int home_side_value = current_turn == 1 ? 0 : 7;
+        
+        for (int i = -1; i < 2; i++) {
+            for (int j = -1; j < 2; j++) {
+                if (!is_within_bounds(x + j, y + i) || (i == 0 && j == 0)) {
+                    continue;
+                }
+                else {
+                    move.to_c = Cords{x + j, y + i};
+                    reg_piece_handle_push_move(moves, move);
+                    move.to_c = orig;
+                }
+            }
+        }
+        
+        int can_castle_queenside = current_turn ? black_can_castle_queenside : white_can_castle_queenside;
+        int can_castle_kingside = current_turn ? black_can_castle_kingside : white_can_castle_kingside;
+        
+        if (can_castle_queenside && squares[home_side_value][3].piece == Empty && squares[home_side_value][1].piece == Empty) {
+            // TODO: checks for !is_square_under_attack(3, home_side_value) in legal generator
+            move.to_c.x -= 2;
+            move.type = Castle_Queenside;
+            reg_piece_handle_push_move(moves, move);
+            move.to_c = orig;
+            move.type = Normal;
+        }
+        else if (can_castle_kingside && squares[home_side_value][5].piece == Empty) {
+            // TODO: checks for !is_square_under_attack(5, home_side_value) in legal generator
+            move.to_c.x += 2;
+            move.type = Castle_Kingside;
+            reg_piece_handle_push_move(moves, move);
+            move.to_c = orig;
+            move.type = Normal;
+        }
+    }
     
     bool is_square_under_attack(int x, int y) {
         // TODO: find if square is being attacked.
@@ -639,24 +689,21 @@ public:
     }
     
     bool is_king_move_valid(Move move, Move& validated_move) {
-        int home_side_value;
-        if (current_turn == 1) {
-            home_side_value = 0;
-        }
-        else {
-            home_side_value = 7;
-        }
+        int home_side_value = current_turn == 1 ? 0 : 7;
+        int can_castle_queenside = current_turn ? black_can_castle_queenside : white_can_castle_queenside;
+        int can_castle_kingside = current_turn ? black_can_castle_kingside : white_can_castle_kingside;
+        
         if (is_square_under_attack(move.to_c.x, move.to_c.y)) {
             return false;
         }
         else if (abs(move.from_c.y - move.to_c.y) <= 1 && abs(move.from_c.x - move.to_c.x) <= 1) {
             return true;
         }
-        else if (move.to_c.x == 2 && move.to_c.y == home_side_value && black_can_castle_queenside && !is_square_under_attack(3, home_side_value) && squares[home_side_value][3].piece == Empty && squares[home_side_value][1].piece == Empty) {
+        else if (move.to_c.x == 2 && can_castle_queenside && !is_square_under_attack(3, home_side_value) && squares[home_side_value][3].piece == Empty && squares[home_side_value][1].piece == Empty) {
             validated_move.type = Castle_Queenside;
             return true;
         }
-        else if (move.to_c.x == 6 && move.to_c.y == home_side_value && black_can_castle_kingside && !is_square_under_attack(5, home_side_value) && squares[home_side_value][5].piece == Empty) {
+        else if (move.to_c.x == 6 && can_castle_kingside && !is_square_under_attack(5, home_side_value) && squares[home_side_value][5].piece == Empty) {
             validated_move.type = Castle_Kingside;
             return true;
         }
@@ -757,16 +804,7 @@ public:
                 validated_move.type = Normal;
         }
         
-        if (!(is_correct_turn(move.from_c.x, move.from_c.y))) {
-            validated_move.type = Illegal;
-        }
-        else if (!(is_within_bounds(move.to_c.x, move.to_c.y))) {
-            validated_move.type = Illegal;
-        }
-        else if (move.from_c.x == move.to_c.x && move.from_c.y == move.to_c.y){
-            validated_move.type = Illegal;
-        }
-        else if (is_friendly_piece(move.to_c.x, move.to_c.y)) {
+        if (!does_pass_basic_piece_checks(move)) {
             validated_move.type = Illegal;
         }
         else if (!is_following_piece_rules(move, validated_move)) {
