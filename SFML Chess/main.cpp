@@ -459,7 +459,7 @@ public:
                         break;
                     case Pawn:
                         piece_moves = generate_pawn_paths(x, y);
-                        debug_print_moves(piece_moves);
+//                        debug_print_moves(piece_moves);
                         break;
                     case Knight:
                         break;
@@ -487,7 +487,7 @@ public:
                     else if ((*it).from_c.x == (*it).to_c.x && (*it).from_c.y == (*it).to_c.y){
                         continue;
                     }
-                    else if (is_friendly_piece((*it).to_c.x, (*it).to_c.y), true) {
+                    else if (is_friendly_piece((*it).to_c.x, (*it).to_c.y) && !ignore_turns){
                         continue;
                     }
                     verified_moves.push_front(*it);
@@ -551,8 +551,8 @@ public:
         return false;
     }
     
-    bool is_friendly_piece(int x, int y, bool ignore_turns = false) {
-        return (squares[y][x].piece != Empty && (squares[y][x].color == current_turn || ignore_turns));
+    bool is_friendly_piece(int x, int y) {
+        return (squares[y][x].piece != Empty && squares[y][x].color == current_turn);
     }
     
     
@@ -1111,7 +1111,7 @@ int main() {
     Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
-//    board.generate_moves(board.get_current_turn());
+    board.generate_moves(board.get_current_turn());
 
     board.set_texture_to_pieces();
     
