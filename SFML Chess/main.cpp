@@ -142,7 +142,10 @@ void set_single_texture(int color, piece_type piece, sf::Sprite& sprite) {
 
 void debug_print_moves(std::forward_list<Move> moves) {
     for (std::forward_list<Move>::iterator it = moves.begin() ; it != moves.end(); ++it) {
-        std::cout << "From: " << it->from_c.x << ", " << it->from_c.y << "  |  To: " << it->to_c.x << ", " << it->to_c.y << std::endl;
+        std::cout << "From: " << it->from_c.x << ", " << it->from_c.y << "  |  To: " << it->to_c.x << ", " << it->to_c.y << "  |  Type: " << it->type << std::endl;
+    }
+    for (int i = 0; i < 10; i++) {
+        std::cout << '\n';
     }
 }
 
@@ -365,7 +368,7 @@ public:
     }
     
     void debug_print() {
-        for (int i = 0; i < 60; i++) {
+        for (int i = 0; i < 30; i++) {
             std::cout << std::endl;
         }
         for (int y = 0; y < 8; y++) {
@@ -451,7 +454,7 @@ public:
         
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
-                
+
                 switch (squares[y][x].piece) {
     
                     case Empty:
@@ -459,7 +462,6 @@ public:
                         break;
                     case Pawn:
                         piece_moves = generate_pawn_paths(x, y);
-//                        debug_print_moves(piece_moves);
                         break;
                     case Knight:
                         break;
@@ -490,16 +492,20 @@ public:
                     else if (is_friendly_piece((*it).to_c.x, (*it).to_c.y) && !ignore_turns){
                         continue;
                     }
-                    verified_moves.push_front(*it);
+                    else {
+                        verified_moves.push_front(*it);
+                        continue;
+                    }
                 }
+                piece_moves.clear();
             }
         }
-        debug_print_moves(verified_moves);
+//        debug_print_moves(verified_moves);
         return verified_moves;
     }
     
     std::forward_list<Move> generate_pawn_paths(int x, int y) {
-        int direction_value, pawn_start_y;
+        int direction_value, pawn_start_y, opposite_side_value;
         std::forward_list<Move> moves;
         Move move;
         Cords orig = Cords {x, y};
@@ -507,6 +513,7 @@ public:
         move.to_c = orig;
         move.type = Normal;
         
+        // Switch some increment values depending on side
         if (squares[y][x].color == 1) {
             direction_value = 1;
             pawn_start_y = 1;
@@ -515,34 +522,66 @@ public:
             direction_value = -1;
             pawn_start_y = 6;
         }
+        
+        // Check for going straight ahead
         if (squares[y + direction_value][x].piece == Empty) {
             move.to_c.y += direction_value;
-            moves.push_front(move);
+            pawn_path_handle_push_move(moves, move);
             move.to_c = orig;
+            // Check for double length for first pawn move
             if (y == pawn_start_y && squares[y + direction_value * 2][x].piece == Empty) {
                 move.to_c.y += direction_value * 2;
-                moves.push_front(move);
+                pawn_path_handle_push_move(moves, move);
                 move.to_c = orig;
             }
         }
+        
+        // See if Pawn can capture two diagonal squares
         for (int i = -1; i < 3; i+=2) {
             if (is_within_bounds(x + i, y + direction_value)) {
                 if (squares[y + direction_value][x + i].piece != Empty) {
                     move.to_c.y += direction_value;
                     move.to_c.x += i;
-                    moves.push_front(move);
+                    pawn_path_handle_push_move(moves, move);
                     move.to_c = orig;
                 }
+                // See if pawn can capture through en passant
                 else if (en_passant_cords.y == y + direction_value && en_passant_cords.x == x + i) {
                     move.to_c.y += direction_value;
                     move.to_c.x += i;
-                    moves.push_front(move);
+                    move.type = En_Passant;
+                    pawn_path_handle_push_move(moves, move);
                     move.to_c = orig;
+                    move.type = Normal;
                 }
             }
         }
         
         return moves;
+    }
+    
+    void pawn_path_handle_push_move(std::forward_list<Move>& moves, Move& move) {
+        int opposite_side_value;
+        if (squares[move.from_c.y][move.from_c.x].color == 1) {
+            opposite_side_value = 7;
+        }
+        else {
+            opposite_side_value = 0;
+        }
+        if (move.to_c.y == opposite_side_value) {
+            move.type = Promote_to_Queen;
+            moves.push_front(move);
+            move.type = Promote_to_Rook;
+            moves.push_front(move);
+            move.type = Promote_to_Bishop;
+            moves.push_front(move);
+            move.type = Promote_to_Knight;
+            moves.push_front(move);
+            move.type = Normal;
+        }
+        else {
+            moves.push_front(move);
+        }
     }
 
     
@@ -1111,7 +1150,6 @@ int main() {
     Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
-    board.generate_moves(board.get_current_turn());
 
     board.set_texture_to_pieces();
     
@@ -1204,6 +1242,7 @@ int main() {
                             
                             // This section checks and handles the validity of move, including drawing the sprite
                             if (validated_move.type != Illegal) {
+                                board.generate_moves(board.get_current_turn());
     
                                 // If move is valid, set the sprite to the new position, delete the sprite that was residing in the to_location, and register the move with the board.
     
