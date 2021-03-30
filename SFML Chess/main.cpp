@@ -419,7 +419,7 @@ public:
         c.x = x;
         c.y = y;
         
-        do {
+        while (1) {
             c.x += increment_x;
             c.y += increment_y;
             
@@ -430,20 +430,10 @@ public:
                 return c;
             }
             else if (squares[c.y][c.x].piece != Empty) {
-                if (squares[c.y][c.x].color != current_turn) {
-                    return c;
-                }
-                else {
-                    c.x -= increment_x;
-                    c.y -= increment_y;
-                    return c;
-                }
+                return c;
             }
-            
-        } while (1);
+        }
     }
-    
-    void generate_sliding_paths(std::forward_list<Move>& moves, Cords incrementer);
     
     
     void generate_attacked_squares();
@@ -486,10 +476,13 @@ public:
                         generate_knight_moves(moves, x, y, ignore_turns);
                         break;
                     case Bishop:
+                        generate_bishop_moves(moves, x, y, ignore_turns);
                         break;
                     case Rook:
+                        generate_rook_moves(moves, x, y, ignore_turns);
                         break;
                     case Queen:
+                        generate_queen_moves(moves, x, y, ignore_turns);
                         break;
                     case King:
                         generate_king_moves(moves, x, y, ignore_turns);
@@ -523,12 +516,12 @@ public:
         // Check for going straight ahead
         if (squares[y + direction_value][x].piece == Empty) {
             move.to_c.y += direction_value;
-            pawn_path_handle_push_move(moves, move);
+            pawn_path_handle_push_move(moves, move, ignore_turns);
             move.to_c = orig;
             // Check for double length for first pawn move
             if (y == pawn_start_y && squares[y + direction_value * 2][x].piece == Empty) {
                 move.to_c.y += direction_value * 2;
-                pawn_path_handle_push_move(moves, move);
+                pawn_path_handle_push_move(moves, move, ignore_turns);
                 move.to_c = orig;
             }
         }
@@ -539,7 +532,7 @@ public:
                 if (squares[y + direction_value][x + i].piece != Empty) {
                     move.to_c.y += direction_value;
                     move.to_c.x += i;
-                    pawn_path_handle_push_move(moves, move);
+                    pawn_path_handle_push_move(moves, move, ignore_turns);
                     move.to_c = orig;
                 }
                 // See if pawn can capture through en passant
@@ -547,7 +540,7 @@ public:
                     move.to_c.y += direction_value;
                     move.to_c.x += i;
                     move.type = En_Passant;
-                    pawn_path_handle_push_move(moves, move);
+                    pawn_path_handle_push_move(moves, move, ignore_turns);
                     move.to_c = orig;
                     move.type = Normal;
                 }
@@ -555,8 +548,8 @@ public:
         }
     }
     
-    void pawn_path_handle_push_move(std::forward_list<Move>& moves, Move& move) {
-        if (!does_pass_basic_piece_checks(move)) {
+    void pawn_path_handle_push_move(std::forward_list<Move>& moves, Move& move, bool ignore_turns = false) {
+        if (!does_pass_basic_piece_checks(move, ignore_turns)) {
             return;
         }
         
@@ -583,8 +576,8 @@ public:
         }
     }
     
-    void reg_piece_handle_push_move(std::forward_list<Move>& moves, Move& move) {
-        if (!does_pass_basic_piece_checks(move)) {
+    void reg_piece_handle_push_move(std::forward_list<Move>& moves, Move& move, bool ignore_turns = false) {
+        if (!does_pass_basic_piece_checks(move, ignore_turns)) {
             return;
         }
         else {
@@ -658,6 +651,60 @@ public:
             }
         }
         
+    }
+    
+    void generate_slider_moves(Cords* increments, Move& move, std::forward_list<Move>& moves, int size, int x, int y) {
+        for (int i = 0; i < size; i++) {
+            move.to_c = sliding_pieces_incrementer(x, y, (increments + i)->x, (increments + i)->y);
+            int temp = std::max(abs(move.to_c.x - x), abs(move.to_c.y - y));
+            for (int j = 0; j < temp; j++) {
+                reg_piece_handle_push_move(moves, move);
+                move.to_c.x -= (increments + i)->x;
+                move.to_c.y -= (increments + i)->y;
+            }
+        }
+    }
+    
+    void generate_bishop_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        if (!(is_correct_turn(x, y)) && !ignore_turns) {
+            return;
+        }
+        
+        Cords orig = Cords {x, y};
+        Move move = {orig, orig, Normal};
+
+        const int size = 4;
+        Cords increments[size] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}};
+        
+        generate_slider_moves(increments, move, moves, size, x, y);
+    }
+    
+    void generate_rook_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        if (!(is_correct_turn(x, y)) && !ignore_turns) {
+            return;
+        }
+        
+        Cords orig = Cords {x, y};
+        Move move = {orig, orig, Normal};
+
+        const int size = 4;
+        Cords increments[size] = {Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
+        
+        generate_slider_moves(increments, move, moves, size, x, y);
+    }
+    
+    void generate_queen_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        if (!(is_correct_turn(x, y)) && !ignore_turns) {
+            return;
+        }
+        
+        Cords orig = Cords {x, y};
+        Move move = {orig, orig, Normal};
+
+        const int size = 8;
+        Cords increments[size] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
+        
+        generate_slider_moves(increments, move, moves, size, x, y);
     }
     
     bool is_square_under_attack(int x, int y) {
