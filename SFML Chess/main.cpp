@@ -94,12 +94,14 @@ struct Square {
     piece_type piece: 7;
     // 0 is white, 1 is black
     unsigned int color: 1;
-    google::dense_hash_set<Cords, std::hash<Cords>, eq> attacked_by_white, attacked_by_black, attacking;
+    google::dense_hash_set<Cords, std::hash<Cords>, eq> attacked_by_white, attacked_by_black, attacking, pinned_by, pinning;
     
     Square() {
         attacked_by_white.set_empty_key(Cords{-1,-1});
         attacked_by_black.set_empty_key(Cords{-1,-1});
         attacking.set_empty_key(Cords{-1,-1});
+        pinned_by.set_empty_key(Cords{-1,-1});
+        pinning.set_empty_key(Cords{-1,-1});
     }
 };
 
@@ -167,7 +169,7 @@ private:
     int halfmove_counter;
     int fullmove_counter;
     
-    Cords en_passant_cords;
+    Cords en_passant_cords, black_king_loc, white_king_loc;
     
     
 public:
@@ -182,8 +184,24 @@ public:
         }
     }
     
+    void find_kings() {
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                if (squares[y][x].piece == King) {
+                    if (squares[y][x].color == 1) {
+                        black_king_loc = Cords{x, y};
+                    }
+                    else {
+                        white_king_loc = Cords{x, y};
+                    }
+                }
+            }
+        }
+    }
+    
     Board(std::string str) {
         read_LEN(str);
+        find_kings();
         generate_attacked_squares();
     }
     
@@ -416,10 +434,8 @@ public:
         std::cout << "Enpassant cords: " << en_passant_cords.x << ' ' << en_passant_cords.y << std::endl;
     }
     
-    Cords sliding_pieces_incrementer(int x, int y, int increment_x, int increment_y) {
-        Cords c;
-        c.x = x;
-        c.y = y;
+    Cords sliding_pieces_incrementer(int x, int y, int increment_x, int increment_y, bool ignore_king = false) {
+        Cords c = {x, y};
         
         while (1) {
             c.x += increment_x;
@@ -432,6 +448,9 @@ public:
                 return c;
             }
             else if (squares[c.y][c.x].piece != Empty) {
+                if (squares[c.y][c.x].piece == King && squares[y][x].color != squares[c.y][c.x].color && ignore_king) {
+                    continue;
+                }
                 return c;
             }
         }
@@ -542,7 +561,7 @@ public:
     void generate_slider_attacks(Cords* increments, int size, int x, int y) {
         Cords c;
         for (int i = 0; i < size; i++) {
-            c = sliding_pieces_incrementer(x, y, (increments + i)->x, (increments + i)->y);
+            c = sliding_pieces_incrementer(x, y, (increments + i)->x, (increments + i)->y, true);
             int temp = std::max(abs(c.x - x), abs(c.y - y));
             for (int j = 0; j < temp; j++) {
                 register_new_attack(x, y, c.x, c.y);
@@ -571,6 +590,101 @@ public:
         Cords increments[size] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
         
         generate_slider_attacks(increments, size, from_x, from_y);
+    }
+    
+    void pin_slider(int x, int y, int increment_x, int increment_y, Cords& pinned_piece, Cords& pinning_piece ) {
+        Cords c = {x, y};
+        bool found_possible_pinned_piece = false;
+
+        while (1) {
+            c.x += increment_x;
+            c.y += increment_y;
+            
+            
+            if (!is_within_bounds(c.x, c.y)) {
+                pinned_piece = Cords{-1, -1};
+                pinning_piece = Cords{-1, -1};
+                return;
+            }
+            // Test to see if piece is reached
+            else if (squares[c.y][c.x].piece != Empty) {
+                // First see if a possible pinned piece has not been found
+                if (!found_possible_pinned_piece) {
+                    // If it is the same color, piece may be pinned!
+                    if (squares[y][x].color == squares[c.y][c.x].color) {
+                        pinned_piece = c;
+                        found_possible_pinned_piece = true;
+                        continue;
+                    }
+                    // If it's not the same color, there can't be a pin no matter what
+                    else {
+                        pinned_piece = Cords{-1, -1};
+                        pinning_piece = Cords{-1, -1};
+                        return;
+                    }
+                }
+                // If a possible pinned piece has already been found
+                else {
+                    // First check to see if the piece is same color. If it is, there cannot be a pin.
+                    if (squares[y][x].color == squares[c.y][c.x].color) {
+                        pinned_piece = Cords{-1, -1};
+                        pinning_piece = Cords{-1, -1};
+                        return;
+                    }
+                    // If the piece is of opposite color, check to see if it has the ability to pin (i.e bishops diagonal, rooks vert/hori)
+                    switch (squares[c.y][c.x].piece) {
+                        // Queen goes first since rook + bishop patterns = queen patterns
+                        case Queen:
+                            // Rook pattern here; notice no break
+                            if (x == c.x || y == c.y) {
+                                pinning_piece = c;
+                                return;
+                            }
+                        case Bishop:
+                            if (abs(c.y - y) == abs(c.x - x)) {
+                                pinning_piece = c;
+                                return;
+                            }
+                            else {
+                                pinned_piece = Cords{-1, -1};
+                                pinning_piece = Cords{-1, -1};
+                                return;
+                            }
+                        case Rook:
+                            if (x == c.x || y == c.y) {
+                                pinning_piece = c;
+                                return;
+                            }
+                            else {
+                                pinned_piece = Cords{-1, -1};
+                                pinning_piece = Cords{-1, -1};
+                                return;
+                            }
+                        // Non slider pieces have no ability to pin
+                        default:
+                            pinned_piece = Cords{-1, -1};
+                            pinning_piece = Cords{-1, -1};
+                            return;
+                    }
+                }
+            }
+        }
+    }
+    
+    
+    void generate_pins() {
+        Cords king, pinned_piece, pinning_piece;
+        
+        king = current_turn == 0 ? black_king_loc : white_king_loc;
+        
+        const int size = 8;
+        Cords increments[size] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
+        for (int i = 0; i < size; i++) {
+            pin_slider(king.x, king.y, (increments + i)->x, (increments + i)->y, pinned_piece, pinning_piece);
+            if (pinned_piece.x != -1) {
+                std::cout << "Found pinned piece: " << pinned_piece.x << ' ' << pinned_piece.y << " | pinner: " << pinning_piece.x << ' ' << pinning_piece.y <<  '\n';
+            }
+        }
     }
 
 
@@ -1087,14 +1201,20 @@ public:
                 white_can_castle_kingside = false;
                 white_can_castle_queenside = false;
             }
+            
+            // Change the king_loc as well
+            if (current_turn == 1) {
+                black_king_loc = move.to_c;
+            }
+            else {
+                white_king_loc = move.to_c;
+            }
         }
         
-        // Clear En Passant
-        en_passant_cords.x = -1;
-        en_passant_cords.y = -1;
         
         
         
+        // TODO: use ternary ops instead of if-else
         
         // Check if En Passant cords need to be set
         if (squares[move.from_c.y][move.from_c.x].piece == Pawn && abs(move.from_c.y - move.to_c.y) == 2) {
@@ -1106,6 +1226,11 @@ public:
                 en_passant_cords.x = move.to_c.x;
                 en_passant_cords.y = move.to_c.y + 1;
             }
+        }
+        else {
+            // Clear En Passant
+            en_passant_cords.x = -1;
+            en_passant_cords.y = -1;
         }
         
         
@@ -1165,9 +1290,9 @@ public:
         
         
         // Do setup for next turn and check for game end.
-        
+        generate_pins();
         generate_attacked_squares();
-        debug_attacked_squares(current_turn);
+//        debug_attacked_squares(current_turn);
         current_turn = !current_turn;
         
 //        generate_attacked_squares();
