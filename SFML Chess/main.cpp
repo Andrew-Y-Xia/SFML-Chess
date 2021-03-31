@@ -94,10 +94,11 @@ struct Square {
     piece_type piece: 7;
     // 0 is white, 1 is black
     unsigned int color: 1;
-    google::dense_hash_set<Cords, std::hash<Cords>, eq> attacked_by, attacking;
+    google::dense_hash_set<Cords, std::hash<Cords>, eq> attacked_by_white, attacked_by_black, attacking;
     
     Square() {
-        attacked_by.set_empty_key(Cords{-1,-1});
+        attacked_by_white.set_empty_key(Cords{-1,-1});
+        attacked_by_black.set_empty_key(Cords{-1,-1});
         attacking.set_empty_key(Cords{-1,-1});
     }
 };
@@ -183,6 +184,7 @@ public:
     
     Board(std::string str) {
         read_LEN(str);
+        generate_attacked_squares();
     }
     
     int get_current_turn() {
@@ -435,8 +437,141 @@ public:
         }
     }
     
+    void debug_attacked_squares(int attacker_color) {
+        std::cout << '\n' << '\n' << '\n' << '\n';
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                std::cout << is_square_under_attack(x, y, attacker_color) << ' ';
+            }
+            std::cout << std::endl;
+        }
+    }
     
-    void generate_attacked_squares();
+    
+    void generate_attacked_squares() {
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                squares[y][x].attacked_by_black.clear();
+                squares[y][x].attacked_by_white.clear();
+                squares[y][x].attacking.clear();
+            }
+        }
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+
+                switch (squares[y][x].piece) {
+    
+                    case Empty:
+                        continue;
+                        break;
+                    case Pawn:
+                        generate_pawn_attacks(x, y);
+                        break;
+                    case Knight:
+                        generate_knight_attacks(x, y);
+                        break;
+                    case Bishop:
+                        generate_bishop_attacks(x, y);
+                        break;
+                    case Rook:
+                        generate_rook_attacks(x, y);
+                        break;
+                    case Queen:
+                        generate_queen_attacks(x, y);
+                        break;
+                    case King:
+                        generate_king_attacks(x, y);
+                        break;
+                    default:
+                        std::cout << "Should not have been reached at generate_attacked_squares" << std::endl;
+                }
+            }
+        }
+    }
+    
+    void register_new_attack(int from_x, int from_y, int to_x, int to_y) {
+        squares[from_y][from_x].attacking.insert(Cords{to_x, to_y});
+        if (squares[from_y][from_x].color == 1) {
+            squares[to_y][to_x].attacked_by_black.insert(Cords{from_x, from_y});
+        } else {
+            squares[to_y][to_x].attacked_by_white.insert(Cords{from_x, from_y});
+        }
+    }
+    
+    void generate_pawn_attacks(int from_x, int from_y) {
+        
+        // Switch some increment values depending on side
+        int direction_value = squares[from_y][from_x].color == 1 ? 1 : -1;
+
+        for (int i = -1; i < 3; i+=2) {
+            if (!(is_within_bounds(from_x + i, from_y + direction_value))) {
+                continue;
+            }
+//            std::cout << from_x << ' ' << from_y << " | " << to_x << ' ' << to_y << '\n';
+            register_new_attack(from_x, from_y, from_x + i, from_y + direction_value);
+        }
+    }
+    
+    void generate_king_attacks(int from_x, int from_y) {
+        for (int i = -1; i < 2; i++) {
+            for (int j = -1; j < 2; j++) {
+                if (!is_within_bounds(from_x + j, from_y + i) || (i == 0 && j == 0)) {
+                    continue;
+                }
+                else {
+                    register_new_attack(from_x, from_y, from_x + j, from_y + i);
+                }
+            }
+        }
+    }
+    
+    void generate_knight_attacks(int from_x, int from_y) {
+        for (int i = -1; i < 2; i += 2) {
+            for (int j = -1; j < 2; j += 2) {
+                if (!is_within_bounds(from_x + 2 * j, from_y + 1 * i) || !is_within_bounds(from_x + 1 * j, from_y + 2 * i)) {
+                    continue;
+                }
+                else {
+                    register_new_attack(from_x, from_y, from_x + 2 * j, from_y + 1 * i);
+                    register_new_attack(from_x, from_y, from_x + 1 * j, from_y + 2 * i);
+                }
+            }
+        }
+    }
+    
+    void generate_slider_attacks(Cords* increments, int size, int x, int y) {
+        Cords c;
+        for (int i = 0; i < size; i++) {
+            c = sliding_pieces_incrementer(x, y, (increments + i)->x, (increments + i)->y);
+            int temp = std::max(abs(c.x - x), abs(c.y - y));
+            for (int j = 0; j < temp; j++) {
+                register_new_attack(x, y, c.x, c.y);
+                c.x -= (increments + i)->x;
+                c.y -= (increments + i)->y;
+            }
+        }
+    }
+    
+    void generate_bishop_attacks(int from_x, int from_y) {
+        const int size = 4;
+        Cords increments[size] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}};
+        
+        generate_slider_attacks(increments, size, from_x, from_y);
+    }
+    
+    void generate_rook_attacks(int from_x, int from_y) {
+        const int size = 4;
+        Cords increments[size] = {Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
+        
+        generate_slider_attacks(increments, size, from_x, from_y);
+    }
+    
+    void generate_queen_attacks(int from_x, int from_y) {
+        const int size = 8;
+        Cords increments[size] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
+        
+        generate_slider_attacks(increments, size, from_x, from_y);
+    }
 
 
     bool does_pass_basic_piece_checks(Move move, bool ignore_turns = false) {
@@ -493,7 +628,7 @@ public:
 
             }
         }
-        debug_print_moves(moves);
+//        debug_print_moves(moves);
         return moves;
     }
     
@@ -586,6 +721,7 @@ public:
     }
     
     void generate_king_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        // TODO: enforce legal moves
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
             return;
         }
@@ -597,7 +733,7 @@ public:
         
         for (int i = -1; i < 2; i++) {
             for (int j = -1; j < 2; j++) {
-                if (!is_within_bounds(x + j, y + i) || (i == 0 && j == 0)) {
+                if (i == 0 && j == 0) {
                     continue;
                 }
                 else {
@@ -707,9 +843,13 @@ public:
         generate_slider_moves(increments, move, moves, size, x, y);
     }
     
-    bool is_square_under_attack(int x, int y) {
-        // TODO: find if square is being attacked.
-        return false;
+    bool is_square_under_attack(int x, int y, int attacker_color) {
+        if (attacker_color == 1) {
+            return !squares[y][x].attacked_by_black.empty();
+        }
+        else {
+            return !squares[y][x].attacked_by_white.empty();
+        }
     }
     
     bool is_friendly_piece(int x, int y) {
@@ -765,17 +905,17 @@ public:
         int can_castle_queenside = current_turn ? black_can_castle_queenside : white_can_castle_queenside;
         int can_castle_kingside = current_turn ? black_can_castle_kingside : white_can_castle_kingside;
         
-        if (is_square_under_attack(move.to_c.x, move.to_c.y)) {
+        if (is_square_under_attack(move.to_c.x, move.to_c.y, !current_turn)) {
             return false;
         }
         else if (abs(move.from_c.y - move.to_c.y) <= 1 && abs(move.from_c.x - move.to_c.x) <= 1) {
             return true;
         }
-        else if (move.to_c.x == 2 && can_castle_queenside && !is_square_under_attack(3, home_side_value) && squares[home_side_value][3].piece == Empty && squares[home_side_value][1].piece == Empty) {
+        else if (move.to_c.x == 2 && can_castle_queenside && !is_square_under_attack(3, home_side_value, !current_turn) && squares[home_side_value][3].piece == Empty && squares[home_side_value][1].piece == Empty) {
             validated_move.type = Castle_Queenside;
             return true;
         }
-        else if (move.to_c.x == 6 && can_castle_kingside && !is_square_under_attack(5, home_side_value) && squares[home_side_value][5].piece == Empty) {
+        else if (move.to_c.x == 6 && can_castle_kingside && !is_square_under_attack(5, home_side_value, !current_turn) && squares[home_side_value][5].piece == Empty) {
             validated_move.type = Castle_Kingside;
             return true;
         }
@@ -1026,7 +1166,8 @@ public:
         
         // Do setup for next turn and check for game end.
         
-        
+        generate_attacked_squares();
+        debug_attacked_squares(current_turn);
         current_turn = !current_turn;
         
 //        generate_attacked_squares();
@@ -1352,7 +1493,6 @@ int main() {
                             
                             // This section checks and handles the validity of move, including drawing the sprite
                             if (validated_move.type != Illegal) {
-                                board.generate_moves(board.get_current_turn());
     
                                 // If move is valid, set the sprite to the new position, delete the sprite that was residing in the to_location, and register the move with the board.
     
