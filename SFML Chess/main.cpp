@@ -42,7 +42,7 @@ namespace std
     };
 }
 
-struct eq {
+struct cords_eq {
   bool operator()(Cords c1, Cords c2) const {
     return (c1.x == c2.x && c1.y == c2.y);
   }
@@ -94,7 +94,7 @@ struct Square {
     piece_type piece: 7;
     // 0 is white, 1 is black
     unsigned int color: 1;
-    google::dense_hash_set<Cords, std::hash<Cords>, eq> attacked_by_white, attacked_by_black, attacking, pinned_by, pinning;
+    google::dense_hash_set<Cords, std::hash<Cords>, cords_eq> attacked_by_white, attacked_by_black, attacking, pinned_by, pinning;
     
     Square() {
         attacked_by_white.set_empty_key(Cords{-1,-1});
@@ -203,6 +203,8 @@ public:
         read_LEN(str);
         find_kings();
         generate_attacked_squares();
+        generate_pins(0);
+        generate_pins(1);
     }
     
     int get_current_turn() {
@@ -592,6 +594,7 @@ public:
         generate_slider_attacks(increments, size, from_x, from_y);
     }
     
+    // Lots of boilerplate here
     void pin_slider(int x, int y, int increment_x, int increment_y, Cords& pinned_piece, Cords& pinning_piece ) {
         Cords c = {x, y};
         bool found_possible_pinned_piece = false;
@@ -672,10 +675,11 @@ public:
     }
     
     
-    void generate_pins() {
+    void generate_pins(int color) {
+        // Color 
         Cords king, pinned_piece, pinning_piece;
         
-        king = current_turn == 0 ? black_king_loc : white_king_loc;
+        king = color == 1 ? black_king_loc : white_king_loc;
         
         const int size = 8;
         Cords increments[size] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
@@ -1167,6 +1171,7 @@ public:
     
     
     void process_move(Move move) {
+        bool recalculate_pins = false;
         
         // Check to see if castling is invalidated
         
@@ -1191,22 +1196,17 @@ public:
             eval_y = move.from_c.y;
         }
         
-        // Check king moves
+        // Check if king moves
         if (squares[move.from_c.y][move.from_c.x].piece == King) {
             if (current_turn == 1) {
                 black_can_castle_kingside = false;
                 black_can_castle_queenside = false;
+            // Change the king_loc as well
+                black_king_loc = move.to_c;
             }
             else {
                 white_can_castle_kingside = false;
                 white_can_castle_queenside = false;
-            }
-            
-            // Change the king_loc as well
-            if (current_turn == 1) {
-                black_king_loc = move.to_c;
-            }
-            else {
                 white_king_loc = move.to_c;
             }
         }
@@ -1241,7 +1241,7 @@ public:
         square.color = 0;
         squares[move.from_c.y][move.from_c.x] = square;
         
-        // Castling handler
+        // set some values for side-specific move patterns
         int castle_side_value, en_passant_side_value;
         if (current_turn == 1) {
             castle_side_value = 0;
@@ -1253,8 +1253,7 @@ public:
         }
         
         
-        
-        
+        // Handle promotions, castling, en_passant
         switch (move.type) {
             case Promote_to_Queen:
                 squares[move.to_c.y][move.to_c.x].piece = Queen;
@@ -1281,21 +1280,31 @@ public:
             case En_Passant:
                 squares[en_passant_side_value][move.to_c.x].piece = Empty;
                 break;
-            case Illegal:
-                std::cout << "This should not have been reached.";
+            case Normal:
                 break;
+            case Illegal:
             default:
+                std::cout << "This should not have been reached (process_move).";
                 break;
         }
         
         
+        
         // Do setup for next turn and check for game end.
-        generate_pins();
+        
+        // If moved to/from squares in pin paths, then recalculate pins
+        Cords king_c;
+        for (int i = 0; i < 2; i++) {
+            king_c = i == 1 ? black_king_loc : white_king_loc;
+            if (abs(move.from_c.x - king_c.x) == abs(move.from_c.y - king_c.y) || move.from_c.x == king_c.x || move.from_c.y == king_c.y || abs(move.to_c.x - king_c.x) == abs(move.to_c.y - king_c.y) || move.to_c.x == king_c.x || move.to_c.y == king_c.y) {
+                ASDF;
+                generate_pins(i);
+            }
+        }
+        
         generate_attacked_squares();
 //        debug_attacked_squares(current_turn);
         current_turn = !current_turn;
-        
-//        generate_attacked_squares();
     }
     
     Move request_move(Move move){
