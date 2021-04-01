@@ -3,7 +3,7 @@
 #include <string>
 #include <ctype.h>
 #include <forward_list>
-#include <sparsehash/dense_hash_set>
+#include <sparsehash/dense_hash_map>
 
 #include "ResourcePath.hpp"
 
@@ -22,6 +22,10 @@ std::forward_list<sf::Sprite> sprites, promotion_sprites_white, promotion_sprite
 struct Cords {
     int x: 8;
     int y: 8;
+    
+    bool operator==(const Cords c2) {
+        return (this->x == c2.x && this->y == c2.y);
+    }
 };
 
  
@@ -94,15 +98,6 @@ struct Square {
     piece_type piece: 7;
     // 0 is white, 1 is black
     unsigned int color: 1;
-    google::dense_hash_set<Cords, std::hash<Cords>, cords_eq> attacked_by_white, attacked_by_black, attacking, pinned_by, pinning;
-    
-    Square() {
-        attacked_by_white.set_empty_key(Cords{-1,-1});
-        attacked_by_black.set_empty_key(Cords{-1,-1});
-        attacking.set_empty_key(Cords{-1,-1});
-        pinned_by.set_empty_key(Cords{-1,-1});
-        pinning.set_empty_key(Cords{-1,-1});
-    }
 };
 
 
@@ -171,6 +166,7 @@ private:
     
     Cords en_passant_cords, black_king_loc, white_king_loc;
     
+    google::dense_hash_map<Cords, std::forward_list<Cords>, std::hash<Cords>, cords_eq> attacked_by_white, attacked_by_black, attacking, pinned_by, pinning;
     
 public:
     Board() {
@@ -200,6 +196,13 @@ public:
     }
     
     Board(std::string str) {
+        Cords n = {-1, -1};
+        attacked_by_white.set_empty_key(n);
+        attacked_by_black.set_empty_key(n);
+        attacking.set_empty_key(n);
+        pinned_by.set_empty_key(n);
+        pinning.set_empty_key(n);
+        
         read_LEN(str);
         find_kings();
         generate_attacked_squares();
@@ -469,53 +472,56 @@ public:
     }
     
     
+    void generate_attacked_square(int x, int y) {
+        switch (squares[y][x].piece) {
+                
+            case Empty:
+                return;
+            case Pawn:
+                generate_pawn_attacks(x, y);
+                break;
+            case Knight:
+                generate_knight_attacks(x, y);
+                break;
+            case Bishop:
+                generate_bishop_attacks(x, y);
+                break;
+            case Rook:
+                generate_rook_attacks(x, y);
+                break;
+            case Queen:
+                generate_queen_attacks(x, y);
+                break;
+            case King:
+                generate_king_attacks(x, y);
+                break;
+            default:
+                std::cout << "Should not have been reached at generate_attacked_squares" << std::endl;
+        }
+    }
+    
     void generate_attacked_squares() {
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
-                squares[y][x].attacked_by_black.clear();
-                squares[y][x].attacked_by_white.clear();
-                squares[y][x].attacking.clear();
+                attacked_by_black.clear();
+                attacked_by_white.clear();
+                attacking.clear();
             }
         }
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
 
-                switch (squares[y][x].piece) {
-    
-                    case Empty:
-                        continue;
-                        break;
-                    case Pawn:
-                        generate_pawn_attacks(x, y);
-                        break;
-                    case Knight:
-                        generate_knight_attacks(x, y);
-                        break;
-                    case Bishop:
-                        generate_bishop_attacks(x, y);
-                        break;
-                    case Rook:
-                        generate_rook_attacks(x, y);
-                        break;
-                    case Queen:
-                        generate_queen_attacks(x, y);
-                        break;
-                    case King:
-                        generate_king_attacks(x, y);
-                        break;
-                    default:
-                        std::cout << "Should not have been reached at generate_attacked_squares" << std::endl;
-                }
+                generate_attacked_square(x, y);
             }
         }
     }
     
     void register_new_attack(int from_x, int from_y, int to_x, int to_y) {
-        squares[from_y][from_x].attacking.insert(Cords{to_x, to_y});
+        attacking[Cords{from_x, from_y}].push_front(Cords{to_x, to_y});
         if (squares[from_y][from_x].color == 1) {
-            squares[to_y][to_x].attacked_by_black.insert(Cords{from_x, from_y});
+            attacked_by_black[Cords{to_x, to_y}].push_front(Cords{from_x, from_y});
         } else {
-            squares[to_y][to_x].attacked_by_white.insert(Cords{from_x, from_y});
+            attacked_by_white[Cords{to_x, to_y}].push_front(Cords{from_x, from_y});
         }
     }
     
@@ -963,10 +969,10 @@ public:
     
     bool is_square_under_attack(int x, int y, int attacker_color) {
         if (attacker_color == 1) {
-            return !squares[y][x].attacked_by_black.empty();
+            return !attacked_by_black[Cords{x, y}].empty();
         }
         else {
-            return !squares[y][x].attacked_by_white.empty();
+            return !attacked_by_white[Cords{x, y}].empty();
         }
     }
     
@@ -1297,13 +1303,16 @@ public:
         for (int i = 0; i < 2; i++) {
             king_c = i == 1 ? black_king_loc : white_king_loc;
             if (abs(move.from_c.x - king_c.x) == abs(move.from_c.y - king_c.y) || move.from_c.x == king_c.x || move.from_c.y == king_c.y || abs(move.to_c.x - king_c.x) == abs(move.to_c.y - king_c.y) || move.to_c.x == king_c.x || move.to_c.y == king_c.y) {
-                ASDF;
                 generate_pins(i);
             }
         }
         
+        // If moved from a slider piece's attack path, update the attacking piece's attack paths, and update the move piece's attack paths
+        
+        
+        
         generate_attacked_squares();
-//        debug_attacked_squares(current_turn);
+        debug_attacked_squares(current_turn);
         current_turn = !current_turn;
     }
     
@@ -1490,6 +1499,13 @@ void normal_move_sprite_handler(Move validated_move, sf::Sprite* sprite_being_dr
 
 
 int main() {
+    
+    /*
+    google::dense_hash_map<Cords, int, std::hash<Cords>, cords_eq> a;
+    a.set_empty_key(Cords{-1, -1});
+    a[Cords{1, 1}] = 42;
+    std::cout << a[Cords{1, 2}];
+     */
     
     sf::Sprite* sprite_being_dragged;
     sprite_being_dragged = NULL;
