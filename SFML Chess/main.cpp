@@ -695,7 +695,9 @@ public:
         for (int i = 0; i < size; i++) {
             pin_slider(king.x, king.y, (increments + i)->x, (increments + i)->y, pinned_piece, pinning_piece);
             if (pinned_piece.x != -1) {
-                std::cout << "Found pinned piece: " << pinned_piece.x << ' ' << pinned_piece.y << " | pinner: " << pinning_piece.x << ' ' << pinning_piece.y <<  '\n';
+//                std::cout << "Found pinned piece: " << pinned_piece.x << ' ' << pinned_piece.y << " | pinner: " << pinning_piece.x << ' ' << pinning_piece.y <<  '\n';
+                pinned_by[Cords{pinned_piece.x, pinned_piece.y}].push_front(Cords{pinning_piece.x, pinning_piece.y});
+                pinning[Cords{pinning_piece.x, pinning_piece.y}].push_front(Cords{pinned_piece.x, pinned_piece.y});
             }
         }
     }
@@ -1096,8 +1098,9 @@ public:
         return (0 <= x && x <= 7 && 0 <= y && y <= 7);
     }
     
-    // TODO: Pins
-    bool piece_is_pinned(int x, int y);
+    bool follows_pin_rules(Move move) {
+        return true;
+    }
     
     bool is_following_piece_rules(Move move, Move& validated_move) {
         
