@@ -1310,55 +1310,71 @@ public:
             }
         }
         
-        
-        // If moved from a slider piece's attack path, update the attacking piece's attack paths, and update the move piece's attack paths
-        for (int j = 0; j < 2; j++) {
-            auto& attacked_by = j ? attacked_by_black : attacked_by_white;
-            Cords changed_cords;
-            
-            for (int i = 0; i < 2; i++) {
-                changed_cords = i ? move.from_c : move.to_c;
+        if (!(move.type == Castle_Kingside || move.type == Castle_Queenside || En_Passant)) {
+            // If moved from a slider piece's attack path, update the attacking piece's attack paths, and update the move piece's attack paths
+            for (int j = 0; j < 2; j++) {
+                auto& attacked_by = j ? attacked_by_black : attacked_by_white;
+                Cords changed_cords;
                 
-                // Find if square is being attacked
-                if (!attacked_by[changed_cords].empty()) {
-                    // Iterate through the squares that are attacking the changed square
-                    // Make copy so deletions can occur
-                    auto saved_list = attacked_by[changed_cords];
-                    for (auto attacker = saved_list.begin(); attacker != saved_list.end(); ++attacker) {
-                        Square& s = squares[attacker -> y][attacker -> x];
-                        
-                        // If they are slider pieces, recalculation is neccesary
-                        if (s.piece == Bishop || s.piece == Rook || s.piece == Queen) {
+                for (int i = 0; i < 2; i++) {
+                    changed_cords = i ? move.from_c : move.to_c;
+                    
+                    // Find if square is being attacked
+                    if (!attacked_by[changed_cords].empty()) {
+                        // Iterate through the squares that are attacking the changed square
+                        // Make copy so deletions can occur
+                        auto saved_list = attacked_by[changed_cords];
+                        for (auto attacker = saved_list.begin(); attacker != saved_list.end(); ++attacker) {
+                            Square& s = squares[attacker -> y][attacker -> x];
                             
-                            std::cout << "Attacker " << attacker -> x << ' ' << attacker -> y << '\n';
-                            // Find all squares being attacked by attacker and remove attacker from the corresponding linked_lists
-                            for (auto attacked = attacking[*attacker].begin(); attacked != attacking[*attacker].end(); ++attacked) {
-                                std::cout << "Attacked_loc: " << attacked -> x << ' ' << attacked -> y << '\n';
+                            // If they are slider pieces, recalculation is neccesary
+                            if (s.piece == Bishop || s.piece == Rook || s.piece == Queen) {
                                 
-                                attacked_by[*attacked].remove(*attacker);
-                                for (auto it = attacked_by[*attacked].begin(); it != attacked_by[*attacked].end(); ++it) {
-                                    std::cout << "attacked_by list contents: " << it -> x << ' ' << it -> y << '\n';
+    //                            std::cout << "Attacker " << attacker -> x << ' ' << attacker -> y << '\n';
+                                // Find all squares being attacked by attacker and remove attacker from the corresponding linked_lists
+                                for (auto attacked = attacking[*attacker].begin(); attacked != attacking[*attacker].end(); ++attacked) {
+    //                                std::cout << "Attacked_loc: " << attacked -> x << ' ' << attacked -> y << '\n';
+                                    
+                                    attacked_by[*attacked].remove(*attacker);
+                                    
+                                    /*
+                                    for (auto it = attacked_by[*attacked].begin(); it != attacked_by[*attacked].end(); ++it) {
+                                        std::cout << "attacked_by list contents: " << it -> x << ' ' << it -> y << '\n';
+                                    }
+                                    */
                                 }
+                                
+                                // Clear all of the attackers original attack patterns/squares, then recalc
+                                attacking[*attacker].clear();
+                                generate_attacked_square(attacker -> x, attacker -> y);
                             }
-                            
-                            // Clear all of the attackers original attack patterns/squares, then recalc
-                            attacking[*attacker].clear();
-                            generate_attacked_square(attacker -> x, attacker -> y);
                         }
+                    }
+                    
+                    // Delete the old attack paths from where piece was moved from
+                    for (auto attacked = attacking[changed_cords].begin(); attacked != attacking[changed_cords].end(); ++attacked) {
+                        attacked_by[*attacked].remove(changed_cords);
                     }
                 }
             }
-            // Delete the old attack paths from where piece was moved from
-            for (auto attacked = attacking[move.from_c].begin(); attacked != attacking[move.from_c].end(); ++attacked) {
-                attacked_by[*attacked].remove(move.from_c);
-            }
+            attacking[move.from_c].clear();
+            generate_attacked_square(move.to_c.x, move.to_c.y);
         }
-        attacking[move.from_c].clear();
-        generate_attacked_square(move.to_c.x, move.to_c.y);
-        
+        else {
+            // I've decided that I really don't care since at max there can only be 2 castle's per game
+            generate_attacked_squares();
+        }
         
         debug_attacked_squares(current_turn);
-//        generate_attacked_squares();
+        auto copy1 = attacking;
+        auto copy2 = attacked_by_black;
+        auto copy3 = attacked_by_white;
+        generate_attacked_squares();
+        debug_attacked_squares(current_turn);
+        
+        attacking = copy1;
+        attacked_by_black = copy2;
+        attacked_by_white = copy3;
 
         current_turn = !current_turn;
     }
