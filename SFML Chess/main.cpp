@@ -29,6 +29,13 @@ struct Cords {
     bool operator!=(const Cords c2) {
         return !(*this == c2);
     }
+    Cords() {
+        x = -1;
+        y = -1;
+    }
+    Cords(int a, int b) {
+        x = a; y = b;
+    }
 };
 
  
@@ -170,7 +177,8 @@ private:
     Cords en_passant_cords, black_king_loc, white_king_loc;
     
     // TODO: remove list for pins
-    google::dense_hash_map<Cords, std::forward_list<Cords>, std::hash<Cords>, cords_eq> attacked_by_white, attacked_by_black, attacking, pinned_by, pinning;
+    google::dense_hash_map<Cords, std::forward_list<Cords>, std::hash<Cords>, cords_eq> attacked_by_white, attacked_by_black, attacking;
+    google::dense_hash_map<Cords, Cords, std::hash<Cords>, cords_eq> pinned_by, pinning;
     
 public:
     Board() {
@@ -694,18 +702,12 @@ public:
     void debug_pins() {
         for (auto it = pinning.begin(); it != pinning.end(); ++it) {
             std::cout << it->first.x << ' ' << it->first.y << " is pinning ";
-            for (auto asdf = it->second.begin(); asdf != it->second.end(); ++asdf) {
-                std::cout << asdf->x << ' ' << asdf->y << " | ";
-            }
-            std::cout << '\n';
+            std::cout << it->second.x << ' ' << it->second.y << '\n';
         }
         std::cout << '\n';
         for (auto it = pinned_by.begin(); it != pinned_by.end(); ++it) {
-            std::cout << it->first.x << ' ' << it->first.y << " is pinnned by ";
-            for (auto asdf = it->second.begin(); asdf != it->second.end(); ++asdf) {
-                std::cout << asdf->x << ' ' << asdf->y << " | ";
-            }
-            std::cout << '\n';
+            std::cout << it->first.x << ' ' << it->first.y << " is pinned by ";
+            std::cout << it->second.x << ' ' << it->second.y << '\n';
         }
         std::cout << '\n' << '\n';
     }
@@ -716,7 +718,7 @@ public:
             // If the piece pinning is of opposite color, delete the pin data (deletion is neccesary otherwise iterator will iterate over it next time)
             // Also, look up the piece being pinned and delete this cord from the list
             if (squares[it->first.y][it->first.x].color != color) {
-                pinned_by[*(it->second.begin())].remove(it->first);
+                pinned_by.erase(it->second);
                 /*
                  if (pinned_by[*(it->second.begin())].empty()) {
                  pinned_by.erase(*(it->second.begin()));
@@ -741,8 +743,8 @@ public:
             pin_slider(king.x, king.y, (increments + i)->x, (increments + i)->y, pinned_piece, pinning_piece);
             if (pinned_piece.x != -1) {
 //                std::cout << "Found pinned piece: " << pinned_piece.x << ' ' << pinned_piece.y << " | pinner: " << pinning_piece.x << ' ' << pinning_piece.y <<  '\n';
-                pinned_by[Cords{pinned_piece.x, pinned_piece.y}].push_front(Cords{pinning_piece.x, pinning_piece.y});
-                pinning[Cords{pinning_piece.x, pinning_piece.y}].push_front(Cords{pinned_piece.x, pinned_piece.y});
+                pinned_by[Cords{pinned_piece.x, pinned_piece.y}] = Cords{pinning_piece.x, pinning_piece.y};
+                pinning[Cords{pinning_piece.x, pinning_piece.y}] = Cords{pinned_piece.x, pinned_piece.y};
             }
         }
         
@@ -1149,38 +1151,38 @@ public:
     }
     
     bool follows_pin_rules(Move move) {
-        bool flag = false;
-        auto& s = pinned_by.find(move.from_c)->second;
-        if (s.empty()) {
+        // For some reason, pinned_by.find does work as expected. Cords initialization issues
+        Cords& c = pinned_by[move.from_c];
+//        std::cout << c.x << ' ' << c.y;
+        if (c == Cords{-1, -1}) {
+            pinned_by.erase(move.from_c);
             return true;
         }
         else {
-            for (auto it = pinned_by.find(move.from_c)->second.begin(); it != pinned_by.find(move.from_c)->second.end(); ++it) {
-                if (move.to_c == *it) {
-                    return true;
-                }
-                switch(squares[move.from_c.y][move.from_c.x].piece) {
-                    case Queen:
-                        // Rook pattern here; notice no break
-                        if (it->x == move.to_c.x || it->y == move.to_c.y) {
-                            flag = true;
-                        }
-                    case Bishop:
-                        if (abs(move.to_c.y - it->y) == abs(move.to_c.x - it->x)) {
-                            flag = true;
-                        }
-                        break;
-                    case Rook:
-                        if (it->x == move.to_c.x || it->y == move.to_c.y) {
-                            flag = true;
-                        }
-                        break;
-                    default:
-                        continue;
-                }
+            if (move.to_c == c) {
+                return true;
+            }
+            switch(squares[c.y][c.x].piece) {
+                case Queen:
+                    // Rook pattern here; notice no break
+                    if (c.x == move.to_c.x || c.y == move.to_c.y) {
+                        return true;
+                    }
+                case Bishop:
+                    if (abs(move.to_c.y - c.y) == abs(move.to_c.x - c.x)) {
+                        return true;
+                    }
+                    break;
+                case Rook:
+                    if (c.x == move.to_c.x || c.y == move.to_c.y) {
+                        return true;
+                    }
+                    break;
+                default:
+                    std::cout << "should not have been reached follows_pin_rules";
             }
         }
-        return flag;
+        return false;
     }
     
     bool is_following_piece_rules(Move move, Move& validated_move) {
@@ -1669,10 +1671,10 @@ void normal_move_sprite_handler(Move validated_move, sf::Sprite* sprite_being_dr
 int main() {
     
     /*
-    google::dense_hash_map<Cords, int, std::hash<Cords>, cords_eq> a;
+    google::dense_hash_map<Cords, Cords, std::hash<Cords>, cords_eq> a;
     a.set_empty_key(Cords{-1, -1});
-    a[Cords{1, 1}] = 42;
-    std::cout << a.find(Cords{1, 2})->second;
+    a[Cords{1, 1}] = Cords{1, 1};
+    std::cout << a[Cords{1, 2}].x;
     */
     
     sf::Sprite* sprite_being_dragged;
