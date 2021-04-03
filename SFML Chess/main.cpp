@@ -169,6 +169,7 @@ private:
     
     Cords en_passant_cords, black_king_loc, white_king_loc;
     
+    // TODO: remove list for pins
     google::dense_hash_map<Cords, std::forward_list<Cords>, std::hash<Cords>, cords_eq> attacked_by_white, attacked_by_black, attacking, pinned_by, pinning;
     
 public:
@@ -200,11 +201,18 @@ public:
     
     Board(std::string str) {
         Cords n = {-1, -1};
+        Cords m = {-2, -2};
         attacked_by_white.set_empty_key(n);
         attacked_by_black.set_empty_key(n);
         attacking.set_empty_key(n);
         pinned_by.set_empty_key(n);
         pinning.set_empty_key(n);
+        
+        attacked_by_white.set_deleted_key(m);
+        attacked_by_black.set_deleted_key(m);
+        attacking.set_deleted_key(m);
+        pinned_by.set_deleted_key(m);
+        pinning.set_deleted_key(m);
         
         read_LEN(str);
         find_kings();
@@ -683,6 +691,41 @@ public:
         }
     }
     
+    void debug_pins() {
+        for (auto it = pinning.begin(); it != pinning.end(); ++it) {
+            std::cout << it->first.x << ' ' << it->first.y << " is pinning ";
+            for (auto asdf = it->second.begin(); asdf != it->second.end(); ++asdf) {
+                std::cout << asdf->x << ' ' << asdf->y << " | ";
+            }
+            std::cout << '\n';
+        }
+        std::cout << '\n';
+        for (auto it = pinned_by.begin(); it != pinned_by.end(); ++it) {
+            std::cout << it->first.x << ' ' << it->first.y << " is pinnned by ";
+            for (auto asdf = it->second.begin(); asdf != it->second.end(); ++asdf) {
+                std::cout << asdf->x << ' ' << asdf->y << " | ";
+            }
+            std::cout << '\n';
+        }
+        std::cout << '\n' << '\n';
+    }
+    
+    
+    void delete_pins(int color) {
+        for (auto it = pinning.begin(); it != pinning.end(); ++it) {
+            // If the piece pinning is of opposite color, delete the pin data (deletion is neccesary otherwise iterator will iterate over it next time)
+            // Also, look up the piece being pinned and delete this cord from the list
+            if (squares[it->first.y][it->first.x].color != color) {
+                pinned_by[*(it->second.begin())].remove(it->first);
+                /*
+                 if (pinned_by[*(it->second.begin())].empty()) {
+                 pinned_by.erase(*(it->second.begin()));
+                 }
+                 */
+                pinning.erase(it->first);
+            }
+        }
+    }
     
     void generate_pins(int color) {
         // Color 
@@ -690,6 +733,8 @@ public:
         
         king = color == 1 ? black_king_loc : white_king_loc;
         
+
+
         const int size = 8;
         Cords increments[size] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
         for (int i = 0; i < size; i++) {
@@ -700,6 +745,8 @@ public:
                 pinning[Cords{pinning_piece.x, pinning_piece.y}].push_front(Cords{pinned_piece.x, pinned_piece.y});
             }
         }
+        
+//        debug_pins();
     }
 
 
@@ -715,6 +762,9 @@ public:
             return false;
         }
         else if (is_friendly_piece(move.to_c.x, move.to_c.y) && !ignore_turns){
+            return false;
+        }
+        else if (!follows_pin_rules(move)) {
             return false;
         }
         else {
@@ -1099,7 +1149,38 @@ public:
     }
     
     bool follows_pin_rules(Move move) {
-        return true;
+        bool flag = false;
+        auto& s = pinned_by.find(move.from_c)->second;
+        if (s.empty()) {
+            return true;
+        }
+        else {
+            for (auto it = pinned_by.find(move.from_c)->second.begin(); it != pinned_by.find(move.from_c)->second.end(); ++it) {
+                if (move.to_c == *it) {
+                    return true;
+                }
+                switch(squares[move.from_c.y][move.from_c.x].piece) {
+                    case Queen:
+                        // Rook pattern here; notice no break
+                        if (it->x == move.to_c.x || it->y == move.to_c.y) {
+                            flag = true;
+                        }
+                    case Bishop:
+                        if (abs(move.to_c.y - it->y) == abs(move.to_c.x - it->x)) {
+                            flag = true;
+                        }
+                        break;
+                    case Rook:
+                        if (it->x == move.to_c.x || it->y == move.to_c.y) {
+                            flag = true;
+                        }
+                        break;
+                    default:
+                        continue;
+                }
+            }
+        }
+        return flag;
     }
     
     bool is_following_piece_rules(Move move, Move& validated_move) {
@@ -1245,6 +1326,25 @@ public:
             en_passant_cords.y = -1;
         }
         
+        // If moved to/from squares in pin paths, delete old pins, prep recalculate pins
+        // The reason this is done pre-actual move is because delete_pins *must* be called before the board is changed.
+        Cords king_c;
+        int generate_pins_info[2] = {0, 0};
+        if (!(move.type == Castle_Kingside || move.type == Castle_Queenside || En_Passant)) {
+            for (int i = 0; i < 2; i++) {
+                king_c = i == 1 ? black_king_loc : white_king_loc;
+                if (abs(move.from_c.x - king_c.x) == abs(move.from_c.y - king_c.y) || move.from_c.x == king_c.x || move.from_c.y == king_c.y || abs(move.to_c.x - king_c.x) == abs(move.to_c.y - king_c.y) || move.to_c.x == king_c.x || move.to_c.y == king_c.y) {
+                    // Delete the old pins of color
+                    delete_pins(i);
+                    generate_pins_info[i] = 1;
+                }
+            }
+        } else {
+            delete_pins(0);
+            delete_pins(1);
+            generate_pins_info[0] = 1;
+            generate_pins_info[1] = 1;
+        }
         
         // Actual act of moving pieces
         squares[move.to_c.y][move.to_c.x] = squares[move.from_c.y][move.from_c.x];
@@ -1304,14 +1404,7 @@ public:
         
         // Do setup for next turn and check for game end.
         
-        // If moved to/from squares in pin paths, then recalculate pins
-        Cords king_c;
-        for (int i = 0; i < 2; i++) {
-            king_c = i == 1 ? black_king_loc : white_king_loc;
-            if (abs(move.from_c.x - king_c.x) == abs(move.from_c.y - king_c.y) || move.from_c.x == king_c.x || move.from_c.y == king_c.y || abs(move.to_c.x - king_c.x) == abs(move.to_c.y - king_c.y) || move.to_c.x == king_c.x || move.to_c.y == king_c.y) {
-                generate_pins(i);
-            }
-        }
+        
         
         if (!(move.type == Castle_Kingside || move.type == Castle_Queenside || En_Passant)) {
             // If moved from a slider piece's attack path, update the attacking piece's attack paths, and update the move piece's attack paths
@@ -1368,6 +1461,14 @@ public:
             generate_attacked_squares();
         }
         
+
+        for (int i = 0; i < 2; i++) {
+            if (generate_pins_info[i]) {
+                generate_pins(i);
+            }
+        }
+        
+        /*
         debug_attacked_squares(current_turn);
         auto copy1 = attacking;
         auto copy2 = attacked_by_black;
@@ -1378,6 +1479,7 @@ public:
         attacking = copy1;
         attacked_by_black = copy2;
         attacked_by_white = copy3;
+        */
 
         current_turn = !current_turn;
     }
@@ -1570,8 +1672,8 @@ int main() {
     google::dense_hash_map<Cords, int, std::hash<Cords>, cords_eq> a;
     a.set_empty_key(Cords{-1, -1});
     a[Cords{1, 1}] = 42;
-    std::cout << a[Cords{1, 2}];
-     */
+    std::cout << a.find(Cords{1, 2})->second;
+    */
     
     sf::Sprite* sprite_being_dragged;
     sprite_being_dragged = NULL;
