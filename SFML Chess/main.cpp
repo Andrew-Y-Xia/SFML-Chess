@@ -64,9 +64,9 @@ struct cords_eq {
 
 struct eqstr
 {
-  bool operator()(const char* s1, const char* s2) const
+  bool operator()(std::string s1, std::string s2) const
   {
-    return (s1 == s2) || (s1 && s2 && strcmp(s1, s2) == 0);
+    return (s1 == s2);
   }
 };
 
@@ -189,7 +189,7 @@ private:
     
     std::forward_list<Move> legal_moves;
     
-    google::dense_hash_map<const char*, int, std::hash<const char*>, eqstr> previous_board_positions;
+    google::dense_hash_map<std::string, int, std::hash<std::string>, eqstr> previous_board_positions;
     
 public:
     Board() {
@@ -227,6 +227,8 @@ public:
         attacking.set_deleted_key(m);
         pinned_by.set_deleted_key(m);
         pinning.set_deleted_key(m);
+        
+        previous_board_positions.set_empty_key(std::string());
     }
     
     void post_readLEN() {
@@ -1067,7 +1069,6 @@ public:
     }
     
     void generate_king_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
-        // TODO: enforce legal moves
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
             return;
         }
@@ -1082,7 +1083,7 @@ public:
                 if (i == 0 && j == 0) {
                     continue;
                 }
-                else {
+                else if (!is_square_under_attack(x + j, y + i, !current_turn)){
                     move.to_c = Cords{x + j, y + i};
                     reg_piece_handle_push_move(moves, move);
                     move.to_c = orig;
@@ -1423,6 +1424,10 @@ public:
         return true;
     }
     
+    void print_move(Move move) {
+        std::cout << "From: " << move.from_c.x << ", " << move.from_c.y << " to: " << move.to_c.x << ", " << move.to_c.y << std::endl;
+    }
+    
     bool has_been_checkmated() {
         Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
         return legal_moves.empty() && is_square_under_attack(king_c.x, king_c.y, !current_turn);
@@ -1431,6 +1436,9 @@ public:
     bool is_draw() {
         Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
         if (legal_moves.empty() && !is_square_under_attack(king_c.x, king_c.y, !current_turn)) {
+            return true;
+        }
+        else if (previous_board_positions[remove_FEN_counters(generate_FEN())] == 2) {
             return true;
         }
         else {
@@ -1550,11 +1558,33 @@ public:
         }
     }
     
+    std::string remove_FEN_counters(std::string in_str) {
+        std::string str;
+        
+        bool flag = false;
+        int pos;
+
+        for (pos = in_str.length() - 1; pos >= 0; pos--) {
+            if (in_str[pos] == ' ') {
+                if (!flag) {
+                    flag = true;
+                }
+                else {
+                    break;
+                }
+            }
+//            std::cout << pos << std::endl;
+        }
+        str = in_str.substr(0, pos);
+//        std::cout << str;
+        return str;
+    }
+    
     void process_move(Move move) {
         
         // Add the current board position for 3-move repition check
         
-//        previous_board_positions[];
+        previous_board_positions[remove_FEN_counters(generate_FEN())] += 1;
         
         bool recalculate_pins = false;
         
@@ -1643,7 +1673,7 @@ public:
         
         
         
-        // Do setup for next turn and check for game end.
+        // Do setup for next turn (do attack gen and finish pins)
         
         
         
