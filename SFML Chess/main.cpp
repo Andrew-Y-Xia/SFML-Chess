@@ -750,8 +750,61 @@ public:
         
 //        debug_pins();
     }
+    
+    bool is_in_between(Cords c1, Cords c2, Cords move_to) {
+        return (std::min(c1.x, c2.x) <= move_to.x && move_to.x <= std::max(c1.x, c2.x) && std::min(c1.y, c2.y) <= move_to.y && move_to.y <= std::max(c1.y, c2.y));
+    }
 
 
+    bool follows_check_rules(Move move) {
+        auto& attacked_by = current_turn == 1 ? attacked_by_white : attacked_by_black;
+        Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
+        
+        // If the king is being moved, then there's no need to do any checks cause the king's individual checks will make sure no illegal moves
+        if (king_c == move.from_c) {
+            return true;
+        }
+        
+        // Check if in check
+        if (is_square_under_attack(king_c.x, king_c.y, !current_turn)) {
+            // Iterate through the squares that are attacking king
+            for (auto attacking_piece = attacked_by.find(king_c)->second.begin(); attacking_piece != attacked_by.find(king_c)->second.end(); ++attacking_piece) {
+                if (!is_in_between(*attacking_piece, king_c, move.to_c)) {
+                    return false;
+                }
+                // If slider piece, see if block-able
+                switch (squares[attacking_piece->y][attacking_piece->x].piece) {
+                    case Queen:
+                        // Rook pattern here; notice no break
+                        if (!(attacking_piece->x == move.to_c.x || attacking_piece->y == move.to_c.y)) {
+                            return false;
+                        }
+                    case Bishop:
+                        if (abs(move.to_c.y - attacking_piece->y) != abs(move.to_c.x - attacking_piece->x)) {
+                            return false;
+                        }
+                        break;
+                    case Rook:
+                        if (!(attacking_piece->x == move.to_c.x || attacking_piece->y == move.to_c.y)) {
+                            return false;
+                        }
+                        break;
+                    // If normal piece, see if taking the
+                    case Pawn:
+                    case Knight:
+                    case King:
+                        if (move.to_c != *attacking_piece) {
+                            return false;
+                        }
+                        break;
+                    default:
+                        std::cout << "should not have been reached follows_check_rules";
+                }
+            }
+        }
+        return true;
+    }
+    
     bool does_pass_basic_piece_checks(Move move, bool ignore_turns = false) {
         if (!(is_correct_turn(move.from_c.x, move.from_c.y)) && !ignore_turns) {
             return false;
@@ -767,6 +820,9 @@ public:
             return false;
         }
         else if (!follows_pin_rules(move)) {
+            return false;
+        }
+        else if (!follows_check_rules(move)) {
             return false;
         }
         else {
@@ -1151,6 +1207,8 @@ public:
     }
     
     bool follows_pin_rules(Move move) {
+        Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
+        
         // For some reason, pinned_by.find does work as expected. Cords initialization issues
         Cords& c = pinned_by[move.from_c];
 //        std::cout << c.x << ' ' << c.y;
@@ -1161,6 +1219,9 @@ public:
         else {
             if (move.to_c == c) {
                 return true;
+            }
+            else if (!is_in_between(king_c, c, move.to_c)) {
+                return false;
             }
             switch(squares[c.y][c.x].piece) {
                 case Queen:
@@ -1249,16 +1310,7 @@ public:
         if (squares[move.from_c.y][move.from_c.x].piece != Pawn || !pawn_rules_subset(move, holder_move) || move.to_c.y != side_value) {
             return false;
         }
-        if (!(is_correct_turn(move.from_c.x, move.from_c.y))) {
-            return false;
-        }
-        else if (!(is_within_bounds(move.to_c.x, move.to_c.y))) {
-            return false;
-        }
-        else if (move.from_c.x == move.to_c.x && move.from_c.y == move.to_c.y){
-            return false;
-        }
-        else if (is_friendly_piece(move.to_c.x, move.to_c.y)) {
+        else if (!does_pass_basic_piece_checks(move)) {
             return false;
         }
         return true;
