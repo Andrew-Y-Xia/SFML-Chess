@@ -277,8 +277,98 @@ public:
         int running_counter = 0;
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
+                char c = piece_type_to_char(squares[y][x].piece);
+                if (squares[y][x].color == 0 && squares[y][x].piece != Empty) {
+                    c = (char) toupper(c);
+                }
+                
+                if (c == '0') {
+                    running_counter += 1;
+                }
+                else if (running_counter != 0) {
+                    str.append(std::to_string(running_counter));
+                    running_counter = 0;
+                }
+                if (c != '0') {
+                    str.append(1, c);
+                }
+            }
+            if (running_counter != 0) {
+                str.append(std::to_string(running_counter));
+                running_counter = 0;
+            }
+            if (y != 7) {
+                str.append(1, '/');
             }
         }
+        str.append(1, ' ');
+        if (current_turn == 1) {
+            str.append(1, 'b');
+        }
+        else {
+            str.append(1, 'w');
+        }
+        str.append(1, ' ');
+        if (white_can_castle_kingside || white_can_castle_queenside || black_can_castle_kingside || black_can_castle_queenside) {
+            if (white_can_castle_kingside) {
+                str.append(1, 'K');
+            }
+            if (white_can_castle_queenside) {
+                str.append(1, 'Q');
+            }
+            if (black_can_castle_kingside) {
+                str.append(1, 'k');
+            }
+            if (black_can_castle_queenside) {
+                str.append(1, 'q');
+            }
+        }
+        else {
+            str.append(1, '-');
+        }
+        str.append(1, ' ');
+        
+        if (en_passant_cords == Cords{-1, -1}) {
+            str.append(1, '-');
+        }
+        else {
+            char c;
+            switch(en_passant_cords.x) {
+                case 0:
+                    c = 'a';
+                    break;
+                case 1:
+                    c = 'b';
+                    break;
+                case 2:
+                    c = 'c';
+                    break;
+                case 3:
+                    c = 'd';
+                    break;
+                case 4:
+                    c = 'e';
+                    break;
+                case 5:
+                    c = 'f';
+                    break;
+                case 6:
+                    c = 'g';
+                    break;
+                case 7:
+                    c = 'h';
+                    break;
+            }
+            str.append(1, c);
+            str.append(std::to_string(7 - en_passant_cords.y));
+        }
+
+        str.append(1, ' ');
+        str.append(std::to_string(halfmove_counter));
+        str.append(1, ' ');
+        str.append(std::to_string(fullmove_counter));
+        
+        return str;
     }
     
     
