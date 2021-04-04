@@ -62,6 +62,14 @@ struct cords_eq {
   }
 };
 
+struct eqstr
+{
+  bool operator()(const char* s1, const char* s2) const
+  {
+    return (s1 == s2) || (s1 && s2 && strcmp(s1, s2) == 0);
+  }
+};
+
 template <class T, class Sub>
 bool lookup(T Set, Sub word) {
     typename T::const_iterator it = Set.find(word);
@@ -176,20 +184,18 @@ private:
     
     Cords en_passant_cords, black_king_loc, white_king_loc;
     
-    // TODO: remove list for pins
     google::dense_hash_map<Cords, std::forward_list<Cords>, std::hash<Cords>, cords_eq> attacked_by_white, attacked_by_black, attacking;
     google::dense_hash_map<Cords, Cords, std::hash<Cords>, cords_eq> pinned_by, pinning;
     
+    std::forward_list<Move> legal_moves;
+    
+    google::dense_hash_map<const char*, int, std::hash<const char*>, eqstr> previous_board_positions;
+    
 public:
     Board() {
-        for (int y = 0; y < 8; y++) {
-            for (int x = 0; x < 8; x++) {
-                Square current_square;
-                current_square.piece = Empty;
-                current_square.color = 0;
-                squares[y][x] = current_square;
-            }
-        }
+        standard_setup();
+        read_FEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+        post_readLEN();
     }
     
     void find_kings() {
@@ -207,7 +213,7 @@ public:
         }
     }
     
-    Board(std::string str) {
+    void standard_setup() {
         Cords n = {-1, -1};
         Cords m = {-2, -2};
         attacked_by_white.set_empty_key(n);
@@ -221,12 +227,20 @@ public:
         attacking.set_deleted_key(m);
         pinned_by.set_deleted_key(m);
         pinning.set_deleted_key(m);
-        
-        read_LEN(str);
+    }
+    
+    void post_readLEN() {
         find_kings();
         generate_attacked_squares();
         generate_pins(0);
         generate_pins(1);
+        generate_moves(legal_moves);
+    }
+    
+    Board(std::string str) {
+        standard_setup();
+        read_FEN(str);
+        post_readLEN();
     }
     
     int get_current_turn() {
@@ -258,8 +272,17 @@ public:
         }
     }
     
+    std::string generate_FEN() {
+        std::string str;
+        int running_counter = 0;
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+            }
+        }
+    }
     
-    void read_LEN(std::string str) {
+    
+    void read_FEN(std::string str) {
         int state_flag = 0;
         
         std::string en_passant_square, halfmove_str, fullmove_str;
@@ -411,36 +434,33 @@ public:
         }
     }
     
+    char piece_type_to_char(piece_type p) {
+        switch (p) {
+            case Empty:
+                return '0';
+            case Pawn:
+                return 'p';
+            case Knight:
+                return 'n';
+            case Bishop:
+                return 'b';
+            case Rook:
+                return 'r';
+            case Queen:
+                return 'q';
+            case King:
+                return 'k';
+        }
+    }
+    
     void debug_print() {
         for (int i = 0; i < 30; i++) {
             std::cout << std::endl;
         }
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
-                char c;
-                switch (squares[y][x].piece) {
-                    case Empty:
-                        c = '0';
-                        break;
-                    case Pawn:
-                        c = 'p';
-                        break;
-                    case Knight:
-                        c = 'n';
-                        break;
-                    case Bishop:
-                        c = 'b';
-                        break;
-                    case Rook:
-                        c = 'r';
-                        break;
-                    case Queen:
-                        c = 'q';
-                        break;
-                    case King:
-                        c = 'k';
-                        break;
-                }
+                char c = piece_type_to_char(squares[y][x].piece);
+                
                 if (squares[y][x].color == 0 && squares[y][x].piece != Empty) {
                     c = (char) toupper(c);
                 }
@@ -830,8 +850,8 @@ public:
         }
     }
     
-    std::forward_list<Move> generate_moves(int side, bool ignore_turns = false, bool pseudo_legal = false) {
-        std::forward_list<Move> moves;
+    void generate_moves(std::forward_list<Move>& moves, bool ignore_turns = false) {
+        moves.clear();
 
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
@@ -866,7 +886,6 @@ public:
             }
         }
 //        debug_print_moves(moves);
-        return moves;
     }
     
     void generate_pawn_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
@@ -984,16 +1003,14 @@ public:
         int can_castle_queenside = current_turn ? black_can_castle_queenside : white_can_castle_queenside;
         int can_castle_kingside = current_turn ? black_can_castle_kingside : white_can_castle_kingside;
         
-        if (can_castle_queenside && squares[home_side_value][3].piece == Empty && squares[home_side_value][1].piece == Empty) {
-            // TODO: checks for !is_square_under_attack(3, home_side_value) in legal generator
+        if (can_castle_queenside && squares[home_side_value][3].piece == Empty && squares[home_side_value][1].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn) && !is_square_under_attack(3, home_side_value, !current_turn)) {
             move.to_c.x -= 2;
             move.type = Castle_Queenside;
             reg_piece_handle_push_move(moves, move);
             move.to_c = orig;
             move.type = Normal;
         }
-        else if (can_castle_kingside && squares[home_side_value][5].piece == Empty) {
-            // TODO: checks for !is_square_under_attack(5, home_side_value) in legal generator
+        else if (can_castle_kingside && squares[home_side_value][5].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn) && !is_square_under_attack(3, home_side_value, !current_turn)) {
             move.to_c.x += 2;
             move.type = Castle_Kingside;
             reg_piece_handle_push_move(moves, move);
@@ -1148,11 +1165,11 @@ public:
         else if (abs(move.from_c.y - move.to_c.y) <= 1 && abs(move.from_c.x - move.to_c.x) <= 1) {
             return true;
         }
-        else if (move.to_c.x == 2 && can_castle_queenside && !is_square_under_attack(3, home_side_value, !current_turn) && squares[home_side_value][3].piece == Empty && squares[home_side_value][1].piece == Empty) {
+        else if (move.to_c.x == 2 && can_castle_queenside && !is_square_under_attack(3, home_side_value, !current_turn) && squares[home_side_value][3].piece == Empty && squares[home_side_value][1].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn)) {
             validated_move.type = Castle_Queenside;
             return true;
         }
-        else if (move.to_c.x == 6 && can_castle_kingside && !is_square_under_attack(5, home_side_value, !current_turn) && squares[home_side_value][5].piece == Empty) {
+        else if (move.to_c.x == 6 && can_castle_kingside && !is_square_under_attack(5, home_side_value, !current_turn) && squares[home_side_value][5].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn)) {
             validated_move.type = Castle_Kingside;
             return true;
         }
@@ -1316,8 +1333,139 @@ public:
         return true;
     }
     
+    bool has_been_checkmated() {
+        Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
+        return legal_moves.empty() && is_square_under_attack(king_c.x, king_c.y, !current_turn);
+    }
+    
+    bool is_draw() {
+        Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
+        if (legal_moves.empty() && !is_square_under_attack(king_c.x, king_c.y, !current_turn)) {
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    
+    void process_attack_generation(const Move &move) {
+        if (!(move.type == Castle_Kingside || move.type == Castle_Queenside || move.type == En_Passant)) {
+            // If moved from a slider piece's attack path, update the attacking piece's attack paths, and update the move piece's attack paths
+            for (int j = 0; j < 2; j++) {
+                auto& attacked_by = j ? attacked_by_black : attacked_by_white;
+                Cords changed_cords;
+                
+                for (int i = 0; i < 2; i++) {
+                    changed_cords = i ? move.from_c : move.to_c;
+                    
+                    // Find if square is being attacked
+                    if (!attacked_by[changed_cords].empty()) {
+                        // Iterate through the squares that are attacking the changed square
+                        // Make copy so deletions can occur
+                        auto saved_list = attacked_by[changed_cords];
+                        for (auto attacker = saved_list.begin(); attacker != saved_list.end(); ++attacker) {
+                            Square& s = squares[attacker -> y][attacker -> x];
+                            
+                            // If they are slider pieces, recalculation is neccesary
+                            if (s.piece == Bishop || s.piece == Rook || s.piece == Queen) {
+                                
+                                //                            std::cout << "Attacker " << attacker -> x << ' ' << attacker -> y << '\n';
+                                // Find all squares being attacked by attacker and remove attacker from the corresponding linked_lists
+                                for (auto attacked = attacking[*attacker].begin(); attacked != attacking[*attacker].end(); ++attacked) {
+                                    //                                std::cout << "Attacked_loc: " << attacked -> x << ' ' << attacked -> y << '\n';
+                                    
+                                    attacked_by[*attacked].remove(*attacker);
+                                    
+                                    /*
+                                     for (auto it = attacked_by[*attacked].begin(); it != attacked_by[*attacked].end(); ++it) {
+                                     std::cout << "attacked_by list contents: " << it -> x << ' ' << it -> y << '\n';
+                                     }
+                                     */
+                                }
+                                
+                                // Clear all of the attackers original attack patterns/squares, then recalc
+                                attacking[*attacker].clear();
+                                generate_attacked_square(attacker -> x, attacker -> y);
+                            }
+                        }
+                    }
+                    
+                    // Delete the old attack paths from where piece was moved from
+                    for (auto attacked = attacking[changed_cords].begin(); attacked != attacking[changed_cords].end(); ++attacked) {
+                        attacked_by[*attacked].remove(changed_cords);
+                    }
+                }
+            }
+            attacking[move.from_c].clear();
+            generate_attacked_square(move.to_c.x, move.to_c.y);
+        }
+        else {
+            // I've decided that I really don't care since at max there can only be 2 castle's per game
+            generate_attacked_squares();
+        }
+    }
+    
+    void process_board_changes(const Move &move) {
+        squares[move.to_c.y][move.to_c.x] = squares[move.from_c.y][move.from_c.x];
+        Square square;
+        square.piece = Empty;
+        square.color = 0;
+        squares[move.from_c.y][move.from_c.x] = square;
+        
+        // set some values for side-specific move patterns
+        int castle_side_value, en_passant_side_value;
+        if (current_turn == 1) {
+            castle_side_value = 0;
+            en_passant_side_value = 4;
+        }
+        else {
+            castle_side_value = 7;
+            en_passant_side_value = 3;
+        }
+        
+        
+        // Handle promotions, castling, en_passant
+        switch (move.type) {
+            case Promote_to_Queen:
+                squares[move.to_c.y][move.to_c.x].piece = Queen;
+                break;
+            case Promote_to_Rook:
+                squares[move.to_c.y][move.to_c.x].piece = Rook;
+                break;
+            case Promote_to_Bishop:
+                squares[move.to_c.y][move.to_c.x].piece = Bishop;
+                break;
+            case Promote_to_Knight:
+                squares[move.to_c.y][move.to_c.x].piece = Knight;
+                break;
+            case Castle_Queenside:
+                squares[castle_side_value][3] = squares[castle_side_value][0];
+                squares[castle_side_value][0].piece = Empty;
+                squares[castle_side_value][0].color = 0;
+                break;
+            case Castle_Kingside:
+                squares[castle_side_value][5] = squares[castle_side_value][7];
+                squares[castle_side_value][7].piece = Empty;
+                squares[castle_side_value][7].color = 0;
+                break;
+            case En_Passant:
+                squares[en_passant_side_value][move.to_c.x].piece = Empty;
+                break;
+            case Normal:
+                break;
+            case Illegal:
+            default:
+                std::cout << "This should not have been reached (process_move).";
+                break;
+        }
+    }
     
     void process_move(Move move) {
+        
+        // Add the current board position for 3-move repition check
+        
+//        previous_board_positions[];
+        
         bool recalculate_pins = false;
         
         // Check to see if castling is invalidated
@@ -1401,58 +1549,7 @@ public:
         }
         
         // Actual act of moving pieces
-        squares[move.to_c.y][move.to_c.x] = squares[move.from_c.y][move.from_c.x];
-        Square square;
-        square.piece = Empty;
-        square.color = 0;
-        squares[move.from_c.y][move.from_c.x] = square;
-        
-        // set some values for side-specific move patterns
-        int castle_side_value, en_passant_side_value;
-        if (current_turn == 1) {
-            castle_side_value = 0;
-            en_passant_side_value = 4;
-        }
-        else {
-            castle_side_value = 7;
-            en_passant_side_value = 3;
-        }
-        
-        
-        // Handle promotions, castling, en_passant
-        switch (move.type) {
-            case Promote_to_Queen:
-                squares[move.to_c.y][move.to_c.x].piece = Queen;
-                break;
-            case Promote_to_Rook:
-                squares[move.to_c.y][move.to_c.x].piece = Rook;
-                break;
-            case Promote_to_Bishop:
-                squares[move.to_c.y][move.to_c.x].piece = Bishop;
-                break;
-            case Promote_to_Knight:
-                squares[move.to_c.y][move.to_c.x].piece = Knight;
-                break;
-            case Castle_Queenside:
-                squares[castle_side_value][3] = squares[castle_side_value][0];
-                squares[castle_side_value][0].piece = Empty;
-                squares[castle_side_value][0].color = 0;
-                break;
-            case Castle_Kingside:
-                squares[castle_side_value][5] = squares[castle_side_value][7];
-                squares[castle_side_value][7].piece = Empty;
-                squares[castle_side_value][7].color = 0;
-                break;
-            case En_Passant:
-                squares[en_passant_side_value][move.to_c.x].piece = Empty;
-                break;
-            case Normal:
-                break;
-            case Illegal:
-            default:
-                std::cout << "This should not have been reached (process_move).";
-                break;
-        }
+        process_board_changes(move);
         
         
         
@@ -1460,60 +1557,7 @@ public:
         
         
         
-        if (!(move.type == Castle_Kingside || move.type == Castle_Queenside || En_Passant)) {
-            // If moved from a slider piece's attack path, update the attacking piece's attack paths, and update the move piece's attack paths
-            for (int j = 0; j < 2; j++) {
-                auto& attacked_by = j ? attacked_by_black : attacked_by_white;
-                Cords changed_cords;
-                
-                for (int i = 0; i < 2; i++) {
-                    changed_cords = i ? move.from_c : move.to_c;
-                    
-                    // Find if square is being attacked
-                    if (!attacked_by[changed_cords].empty()) {
-                        // Iterate through the squares that are attacking the changed square
-                        // Make copy so deletions can occur
-                        auto saved_list = attacked_by[changed_cords];
-                        for (auto attacker = saved_list.begin(); attacker != saved_list.end(); ++attacker) {
-                            Square& s = squares[attacker -> y][attacker -> x];
-                            
-                            // If they are slider pieces, recalculation is neccesary
-                            if (s.piece == Bishop || s.piece == Rook || s.piece == Queen) {
-                                
-    //                            std::cout << "Attacker " << attacker -> x << ' ' << attacker -> y << '\n';
-                                // Find all squares being attacked by attacker and remove attacker from the corresponding linked_lists
-                                for (auto attacked = attacking[*attacker].begin(); attacked != attacking[*attacker].end(); ++attacked) {
-    //                                std::cout << "Attacked_loc: " << attacked -> x << ' ' << attacked -> y << '\n';
-                                    
-                                    attacked_by[*attacked].remove(*attacker);
-                                    
-                                    /*
-                                    for (auto it = attacked_by[*attacked].begin(); it != attacked_by[*attacked].end(); ++it) {
-                                        std::cout << "attacked_by list contents: " << it -> x << ' ' << it -> y << '\n';
-                                    }
-                                    */
-                                }
-                                
-                                // Clear all of the attackers original attack patterns/squares, then recalc
-                                attacking[*attacker].clear();
-                                generate_attacked_square(attacker -> x, attacker -> y);
-                            }
-                        }
-                    }
-                    
-                    // Delete the old attack paths from where piece was moved from
-                    for (auto attacked = attacking[changed_cords].begin(); attacked != attacking[changed_cords].end(); ++attacked) {
-                        attacked_by[*attacked].remove(changed_cords);
-                    }
-                }
-            }
-            attacking[move.from_c].clear();
-            generate_attacked_square(move.to_c.x, move.to_c.y);
-        }
-        else {
-            // I've decided that I really don't care since at max there can only be 2 castle's per game
-            generate_attacked_squares();
-        }
+        process_attack_generation(move);
         
 
         for (int i = 0; i < 2; i++) {
@@ -1536,6 +1580,15 @@ public:
         */
 
         current_turn = !current_turn;
+        
+        generate_moves(legal_moves);
+        
+        if (has_been_checkmated()) {
+            std::cout << "Checkmate!" << std::endl;
+        }
+        if (is_draw()) {
+            std::cout << "Draw has been reached. " << std::endl;
+        }
     }
     
     Move request_move(Move move){
