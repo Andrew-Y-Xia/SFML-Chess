@@ -197,6 +197,8 @@ private:
     
     google::dense_hash_map<std::string, int, std::hash<std::string>, eqstr> previous_board_positions;
     
+    std::forward_list<Cords> attacks_on_the_king;
+    
 public:
     Board() {
         standard_setup();
@@ -595,8 +597,8 @@ public:
         std::cout << '\n' << '\n' << '\n' << '\n';
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
-                is_square_under_attack(x, y, attacker_color);
-//                std::cout << is_square_under_attack(x, y, attacker_color) << ' ';
+//                is_square_under_attack(x, y, attacker_color);
+                std::cout << is_square_under_attack(x, y, attacker_color) << ' ';
             }
             std::cout << std::endl;
         }
@@ -740,19 +742,17 @@ public:
 
 
     bool follows_check_rules(Move move) {
-        // TODO: called too many times, under_attack_cords specifically for king so save potential
-        Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
-        auto attacked_by = under_attack_cords(king_c.x, king_c.y, !current_turn);
         
+        Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
         // If the king is being moved, then there's no need to do any checks cause the king's individual checks will make sure no illegal moves
         if (king_c == move.from_c) {
             return true;
         }
         
         // Check if in check
-        if (attacked_by.empty()) {
+        if (!attacks_on_the_king.empty()) {
             // Iterate through the squares that are attacking king
-            for (auto attacking_piece = attacked_by.begin(); attacking_piece != attacked_by.end(); ++attacking_piece) {
+            for (auto attacking_piece = attacks_on_the_king.begin(); attacking_piece != attacks_on_the_king.end(); ++attacking_piece) {
                 if (!is_in_between(*attacking_piece, king_c, move.to_c)) {
                     return false;
                 }
@@ -816,6 +816,11 @@ public:
     
     void generate_moves(std::forward_list<Move>& moves, bool ignore_turns = false) {
         moves.clear();
+        attacks_on_the_king.clear();
+        
+        Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
+        attacks_on_the_king = under_attack_cords(king_c.x, king_c.y, !current_turn);
+        
 
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
@@ -1141,10 +1146,12 @@ public:
             }
         }
 
+        /*
         std::cout << "Searching: " << x << ' ' << y << std::endl;
         for (auto it = attackers.begin(); it != attackers.end(); ++it) {
             std::cout << it->x << ' ' << it->y << std::endl;
         }
+         */
 
         
         return attackers;
@@ -1388,6 +1395,12 @@ public:
     
     // Legal moves must be generated before game end evals are called
     bool has_been_checkmated() {
+        /*
+        std::cout << '\n' << '\n' << '\n' << '\n';
+        for (auto it = legal_moves.begin(); it != legal_moves.end(); ++it) {
+            print_move(*it);
+        }
+         */
         Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
         return legal_moves.empty() && is_square_under_attack(king_c.x, king_c.y, !current_turn);
     }
@@ -1598,8 +1611,7 @@ public:
         */
 
         current_turn = !current_turn;
-        debug_attacked_squares(current_turn);
-        
+
         generate_moves(legal_moves);
         
         if (has_been_checkmated()) {
