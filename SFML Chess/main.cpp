@@ -648,9 +648,13 @@ public:
                     switch (squares[c.y][c.x].piece) {
                         // Queen goes first since rook + bishop patterns = queen patterns
                         case Queen:
-                            // Rook pattern here; notice no break
-                            if (x == c.x || y == c.y) {
+                            if (x == c.x || y == c.y || abs(c.y - y) == abs(c.x - x)) {
                                 pinning_piece = c;
+                                return;
+                            }
+                            else {
+                                pinned_piece = Cords{-1, -1};
+                                pinning_piece = Cords{-1, -1};
                                 return;
                             }
                         case Bishop:
@@ -759,10 +763,10 @@ public:
                 // If slider piece, see if block-able
                 switch (squares[attacking_piece->y][attacking_piece->x].piece) {
                     case Queen:
-                        // Rook pattern here; notice no break
-                        if (!(attacking_piece->x == move.to_c.x || attacking_piece->y == move.to_c.y)) {
+                        if (!(attacking_piece->x == move.to_c.x || attacking_piece->y == move.to_c.y) && abs(move.to_c.y - attacking_piece->y) != abs(move.to_c.x - attacking_piece->x)) {
                             return false;
                         }
+                        break;
                     case Bishop:
                         if (abs(move.to_c.y - attacking_piece->y) != abs(move.to_c.x - attacking_piece->x)) {
                             return false;
@@ -773,7 +777,7 @@ public:
                             return false;
                         }
                         break;
-                    // If normal piece, see if taking the
+                    // If normal piece, see if taking the attacking piece
                     case Pawn:
                     case Knight:
                     case King:
@@ -1125,11 +1129,10 @@ public:
                     case King:
                         break;
                     case Queen:
-                        // Rook pattern here; notice no break
-                        if (c.x == x || c.y == y) {
+                        if (c.x == x || c.y == y || abs(y - c.y) == abs(x - c.x)) {
                             attackers.push_front(Cords{c.x, c.y});
-                            break;
                         }
+                        break;
                     case Bishop:
                         if (abs(y - c.y) == abs(x - c.x)) {
                             attackers.push_front(Cords{c.x, c.y});
@@ -1297,8 +1300,10 @@ public:
             }
             switch(squares[c.y][c.x].piece) {
                 case Queen:
-                    // Rook pattern here; notice no break
-                    if (c.x == move.to_c.x || c.y == move.to_c.y) {
+                    if ((c.x == move.to_c.x || c.y == move.to_c.y) && (king_c.x == move.to_c.x || king_c.y == move.to_c.y)) {
+                        return true;
+                    }
+                    else if (abs(move.to_c.y - c.y) == abs(move.to_c.x - c.x)) {
                         return true;
                     }
                 case Bishop:
@@ -1590,7 +1595,7 @@ public:
         
         
         // Finish pins
-
+        // TODO: maybe only generate specific increments when needed vs all eight of them?
         for (int i = 0; i < 2; i++) {
             if (generate_pins_info[i]) {
                 generate_pins(i);
