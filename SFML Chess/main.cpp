@@ -763,7 +763,16 @@ public:
                 // If slider piece, see if block-able
                 switch (squares[attacking_piece->y][attacking_piece->x].piece) {
                     case Queen:
-                        if (!(attacking_piece->x == move.to_c.x || attacking_piece->y == move.to_c.y) && abs(move.to_c.y - attacking_piece->y) != abs(move.to_c.x - attacking_piece->x)) {
+                        if (abs(move.to_c.y - attacking_piece->y) == abs(move.to_c.x - attacking_piece->x)) {
+                            continue;
+                        }
+                        else if (attacking_piece->x == move.to_c.x && king_c.x == move.to_c.x) {
+                            continue;
+                        }
+                        else if (attacking_piece->y == move.to_c.y && king_c.y == move.to_c.y) {
+                            continue;
+                        }
+                        else {
                             return false;
                         }
                         break;
@@ -1300,7 +1309,10 @@ public:
             }
             switch(squares[c.y][c.x].piece) {
                 case Queen:
-                    if ((c.x == move.to_c.x || c.y == move.to_c.y) && (king_c.x == move.to_c.x || king_c.y == move.to_c.y)) {
+                    if (c.x == move.to_c.x && king_c.x == move.to_c.x) {
+                        return true;
+                    }
+                    else if (c.y == move.to_c.y && king_c.y == move.to_c.y) {
                         return true;
                     }
                     else if (abs(move.to_c.y - c.y) == abs(move.to_c.x - c.x)) {
