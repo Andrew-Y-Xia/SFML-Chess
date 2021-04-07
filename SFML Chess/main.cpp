@@ -113,8 +113,12 @@ struct Move {
 
 struct Move_data {
     Move move;
-    piece_type captured_piece;
-    Cords captured_cords;
+    piece_type captured_piece : 4;
+    Cords previous_en_passant_cords;
+    bool white_can_castle_queenside: 1;
+    bool white_can_castle_kingside: 1;
+    bool black_can_castle_queenside: 1;
+    bool black_can_castle_kingside: 1;
 };
 
 
@@ -181,10 +185,10 @@ private:
     int current_turn;
    
     
-    bool white_can_castle_queenside;
-    bool white_can_castle_kingside;
-    bool black_can_castle_queenside;
-    bool black_can_castle_kingside;
+    bool white_can_castle_queenside: 1;
+    bool white_can_castle_kingside: 1;
+    bool black_can_castle_queenside: 1;
+    bool black_can_castle_kingside: 1;
     
     int halfmove_counter;
     int fullmove_counter;
@@ -198,6 +202,8 @@ private:
     google::dense_hash_map<std::string, int, std::hash<std::string>, eqstr> previous_board_positions;
     
     std::forward_list<Cords> attacks_on_the_king;
+    
+    std::forward_list<Move_data> move_stack;
     
 public:
     Board() {
@@ -1514,12 +1520,24 @@ public:
     
     void process_move(Move move) {
         
+        // Save move info onto past moves stack
+        Move_data move_data;
+        move_data.move = move;
+        move_data.captured_piece = squares[move.to_c.y][move.to_c.x].piece;
+        move_data.previous_en_passant_cords = en_passant_cords;
+        move_data.white_can_castle_kingside = white_can_castle_kingside;
+        move_data.white_can_castle_queenside = white_can_castle_queenside;
+        move_data.black_can_castle_kingside = black_can_castle_kingside;
+        move_data.black_can_castle_queenside = black_can_castle_queenside;
+        
+        move_stack.push_front(move_data);
+        
+        
         // Add the current board position for 3-move repition check
         
         previous_board_positions[remove_FEN_counters(generate_FEN())] += 1;
         
-        bool recalculate_pins = false;
-        
+
         // Check to see if castling is invalidated
         
         // see if rook was captured/moved
@@ -1584,7 +1602,7 @@ public:
         // The reason this is done pre-actual move is because delete_pins *must* be called before the board is changed.
         Cords king_c;
         int generate_pins_info[2] = {0, 0};
-        if (!(move.type == Castle_Kingside || move.type == Castle_Queenside || En_Passant)) {
+        if (!(move.type == Castle_Kingside || move.type == Castle_Queenside || move.type == En_Passant)) {
             for (int i = 0; i < 2; i++) {
                 king_c = i == 1 ? black_king_loc : white_king_loc;
                 if (abs(move.from_c.x - king_c.x) == abs(move.from_c.y - king_c.y) || move.from_c.x == king_c.x || move.from_c.y == king_c.y || abs(move.to_c.x - king_c.x) == abs(move.to_c.y - king_c.y) || move.to_c.x == king_c.x || move.to_c.y == king_c.y) {
@@ -1629,6 +1647,7 @@ public:
 
         current_turn = !current_turn;
 
+        /*
         generate_moves(legal_moves);
         
         if (has_been_checkmated()) {
@@ -1637,6 +1656,101 @@ public:
         if (is_draw()) {
             std::cout << "Draw has been reached. " << std::endl;
         }
+         */
+        
+//        debug_print();
+//        undo_last_move();
+//        debug_print();
+//        std::cout << generate_FEN();
+    }
+    
+    void undo_last_move() {
+        Move_data move_data = *(move_stack.begin());
+        previous_board_positions[remove_FEN_counters(generate_FEN())] -= 1;
+        
+        current_turn = !current_turn;
+        
+        Cords king_c;
+        int generate_pins_info[2] = {0, 0};
+        if (!(move_data.move.type == Castle_Kingside || move_data.move.type == Castle_Queenside || move_data.move.type == En_Passant)) {
+            for (int i = 0; i < 2; i++) {
+                king_c = i == 1 ? black_king_loc : white_king_loc;
+                if (abs(move_data.move.from_c.x - king_c.x) == abs(move_data.move.from_c.y - king_c.y) || move_data.move.from_c.x == king_c.x || move_data.move.from_c.y == king_c.y || abs(move_data.move.to_c.x - king_c.x) == abs(move_data.move.to_c.y - king_c.y) || move_data.move.to_c.x == king_c.x || move_data.move.to_c.y == king_c.y) {
+                    // Delete the old pins of color
+                    delete_pins(i);
+                    generate_pins_info[i] = 1;
+                }
+            }
+        } else {
+            delete_pins(0);
+            delete_pins(1);
+            generate_pins_info[0] = 1;
+            generate_pins_info[1] = 1;
+        }
+        
+        
+        squares[move_data.move.from_c.y][move_data.move.from_c.x] = squares[move_data.move.to_c.y][move_data.move.to_c.x];
+        Square square;
+        square.piece = move_data.captured_piece;
+        square.color = !current_turn;
+        squares[move_data.move.to_c.y][move_data.move.to_c.x] = square;
+        
+        // set some values for side-specific move patterns
+        int castle_side_value, en_passant_side_value;
+        if (current_turn == 1) {
+            castle_side_value = 0;
+            en_passant_side_value = 4;
+        }
+        else {
+            castle_side_value = 7;
+            en_passant_side_value = 3;
+        }
+        
+        
+        // Handle promotions, castling, en_passant
+        switch (move_data.move.type) {
+            case Promote_to_Queen:
+            case Promote_to_Rook:
+            case Promote_to_Bishop:
+            case Promote_to_Knight:
+                squares[move_data.move.from_c.y][move_data.move.from_c.x].piece = Pawn;
+                break;
+            case Castle_Queenside:
+                squares[castle_side_value][0] = squares[castle_side_value][3];
+                squares[castle_side_value][3].piece = Empty;
+                squares[castle_side_value][3].color = 0;
+                break;
+            case Castle_Kingside:
+                squares[castle_side_value][7] = squares[castle_side_value][5];
+                squares[castle_side_value][5].piece = Empty;
+                squares[castle_side_value][5].color = 0;
+                break;
+            case En_Passant:
+                squares[en_passant_side_value][move_data.move.to_c.x].piece = Pawn;
+                squares[en_passant_side_value][move_data.move.to_c.x].color = !current_turn;
+                break;
+            case Normal:
+                break;
+            case Illegal:
+            default:
+                std::cout << "This should not have been reached (process_move).";
+                break;
+        }
+        
+        
+        for (int i = 0; i < 2; i++) {
+            if (generate_pins_info[i]) {
+                generate_pins(i);
+            }
+        }
+        
+        en_passant_cords = move_data.previous_en_passant_cords;
+        white_can_castle_kingside = move_data.white_can_castle_kingside;
+        white_can_castle_queenside = move_data.white_can_castle_queenside;
+        black_can_castle_kingside = move_data.black_can_castle_kingside;
+        black_can_castle_queenside = move_data.black_can_castle_queenside;
+        
+        move_stack.pop_front();
     }
     
     Move request_move(Move move){
@@ -1871,7 +1985,7 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    Board board("rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
 
