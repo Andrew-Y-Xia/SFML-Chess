@@ -33,6 +33,8 @@
 #
 # c.f. http://www.westwind.com/reference/os-x/invisibles.html
 
+.ipynb_checkpoints
+
 .DS_Store
 
 # c.f. http://www.westwind.com/reference/os-x/invisibles.html

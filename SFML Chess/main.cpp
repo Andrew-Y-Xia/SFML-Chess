@@ -17,7 +17,7 @@
 // Global vars:
 sf::Texture textures[13];
 std::forward_list<sf::Sprite> sprites, promotion_sprites_white, promotion_sprites_black;
-
+int captures;
 
 struct Cords {
     int x: 8;
@@ -281,6 +281,37 @@ public:
         }
     }
     
+    char num_to_char(int input) {
+        char c;
+        switch(input) {
+            case 0:
+                c = 'a';
+                break;
+            case 1:
+                c = 'b';
+                break;
+            case 2:
+                c = 'c';
+                break;
+            case 3:
+                c = 'd';
+                break;
+            case 4:
+                c = 'e';
+                break;
+            case 5:
+                c = 'f';
+                break;
+            case 6:
+                c = 'g';
+                break;
+            case 7:
+                c = 'h';
+                break;
+        }
+        return c;
+    }
+    
     std::string generate_FEN() {
         std::string str;
         int running_counter = 0;
@@ -341,33 +372,7 @@ public:
             str.append(1, '-');
         }
         else {
-            char c;
-            switch(en_passant_cords.x) {
-                case 0:
-                    c = 'a';
-                    break;
-                case 1:
-                    c = 'b';
-                    break;
-                case 2:
-                    c = 'c';
-                    break;
-                case 3:
-                    c = 'd';
-                    break;
-                case 4:
-                    c = 'e';
-                    break;
-                case 5:
-                    c = 'f';
-                    break;
-                case 6:
-                    c = 'g';
-                    break;
-                case 7:
-                    c = 'h';
-                    break;
-            }
+            char c = num_to_char(en_passant_cords.x);
             str.append(1, c);
             str.append(std::to_string(7 - en_passant_cords.y));
         }
@@ -993,14 +998,14 @@ public:
         int can_castle_queenside = current_turn ? black_can_castle_queenside : white_can_castle_queenside;
         int can_castle_kingside = current_turn ? black_can_castle_kingside : white_can_castle_kingside;
         
-        if (can_castle_queenside && squares[home_side_value][3].piece == Empty && squares[home_side_value][1].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn) && !is_square_under_attack(3, home_side_value, !current_turn)) {
+        if (can_castle_queenside && squares[home_side_value][3].piece == Empty && squares[home_side_value][2].piece == Empty && squares[home_side_value][1].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn) && !is_square_under_attack(3, home_side_value, !current_turn) && !is_square_under_attack(2, home_side_value, !current_turn)) {
             move.to_c.x -= 2;
             move.type = Castle_Queenside;
             reg_piece_handle_push_move(moves, move);
             move.to_c = orig;
             move.type = Normal;
         }
-        else if (can_castle_kingside && squares[home_side_value][5].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn) && !is_square_under_attack(3, home_side_value, !current_turn)) {
+        if (can_castle_kingside && squares[home_side_value][5].piece == Empty && squares[home_side_value][6].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn) && !is_square_under_attack(5, home_side_value, !current_turn) && !is_square_under_attack(6, home_side_value, !current_turn)) {
             move.to_c.x += 2;
             move.type = Castle_Kingside;
             reg_piece_handle_push_move(moves, move);
@@ -1238,11 +1243,11 @@ public:
         else if (abs(move.from_c.y - move.to_c.y) <= 1 && abs(move.from_c.x - move.to_c.x) <= 1) {
             return true;
         }
-        else if (move.to_c.x == 2 && can_castle_queenside && !is_square_under_attack(3, home_side_value, !current_turn) && squares[home_side_value][3].piece == Empty && squares[home_side_value][1].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn)) {
+        else if (move.to_c.x == 2 && can_castle_queenside && !is_square_under_attack(3, home_side_value, !current_turn) && squares[home_side_value][3].piece == Empty && squares[home_side_value][2].piece == Empty && squares[home_side_value][1].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn)) {
             validated_move.type = Castle_Queenside;
             return true;
         }
-        else if (move.to_c.x == 6 && can_castle_kingside && !is_square_under_attack(5, home_side_value, !current_turn) && squares[home_side_value][5].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn)) {
+        else if (move.to_c.x == 6 && can_castle_kingside && !is_square_under_attack(5, home_side_value, !current_turn) && squares[home_side_value][5].piece == Empty && squares[home_side_value][6].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn)) {
             validated_move.type = Castle_Kingside;
             return true;
         }
@@ -1411,8 +1416,13 @@ public:
         return true;
     }
     
-    void print_move(Move move) {
-        std::cout << "From: " << move.from_c.x << ", " << move.from_c.y << " to: " << move.to_c.x << ", " << move.to_c.y << std::endl;
+    void print_move(Move move, bool reg = false) {
+        if (!reg) {
+            std::cout << "From: " << move.from_c.x << ", " << move.from_c.y << " to: " << move.to_c.x << ", " << move.to_c.y << std::endl;
+        }
+        else {
+            std::cout << num_to_char(move.from_c.x) << 8 - move.from_c.y << num_to_char(move.to_c.x) << 8 - move.to_c.y;
+        }
     }
     
     
@@ -1535,7 +1545,7 @@ public:
         
         // Add the current board position for 3-move repition check
         
-        previous_board_positions[remove_FEN_counters(generate_FEN())] += 1;
+//        previous_board_positions[remove_FEN_counters(generate_FEN())] += 1;
         
 
         // Check to see if castling is invalidated
@@ -1666,7 +1676,7 @@ public:
     
     void undo_last_move() {
         Move_data move_data = *(move_stack.begin());
-        previous_board_positions[remove_FEN_counters(generate_FEN())] -= 1;
+//        previous_board_positions[remove_FEN_counters(generate_FEN())] -= 1;
         
         current_turn = !current_turn;
         
@@ -1689,11 +1699,22 @@ public:
         }
         
         
+        
+        if (squares[move_data.move.to_c.y][move_data.move.to_c.x].piece == King) {
+            if (current_turn == 1) {
+            // Change the king_loc as well
+                black_king_loc = move_data.move.from_c;
+            }
+            else {
+                white_king_loc = move_data.move.from_c;
+            }
+        }
+        
+        
+        
         squares[move_data.move.from_c.y][move_data.move.from_c.x] = squares[move_data.move.to_c.y][move_data.move.to_c.x];
-        Square square;
-        square.piece = move_data.captured_piece;
-        square.color = !current_turn;
-        squares[move_data.move.to_c.y][move_data.move.to_c.x] = square;
+        squares[move_data.move.to_c.y][move_data.move.to_c.x].piece = move_data.captured_piece;
+        squares[move_data.move.to_c.y][move_data.move.to_c.x].color = !current_turn;
         
         // set some values for side-specific move patterns
         int castle_side_value, en_passant_side_value;
@@ -1759,15 +1780,25 @@ public:
         std::forward_list<Move> moves;
         generate_moves(moves);
         
+        if (depth == 0) {
+            return 1;
+        }
+        
         if (depth == 1) {
             int counter = 0;
             for (auto it = moves.begin(); it != moves.end(); ++it) {
+                if (squares[it->to_c.y][it->to_c.x].piece != Empty) {
+                    captures += 1;
+                }
                 counter++;
             }
             return counter;
         }
         
         for (auto it = moves.begin(); it != moves.end(); ++it) {
+            if (squares[it->to_c.y][it->to_c.x].piece != Empty) {
+                captures += 1;
+            }
             process_move(*it);
             nodes += Perft(depth - 1);
             undo_last_move();
@@ -2010,8 +2041,20 @@ int main() {
     Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
+    
+    std::forward_list<Move> moves;
+    board.generate_moves(moves);
+    for (auto it = moves.begin(); it != moves.end(); ++it) {
+        board.print_move(*it, true);
+        board.process_move(*it);
+        std::cout << ": " << board.Perft(4) << std::endl;
+//        board.debug_print();
+//        board.debug_pins();
+        board.undo_last_move();
+    }
+    std::cout << captures << std::endl;
 
-    std::cout << board.Perft(4);
+    
     
     board.set_texture_to_pieces();
     
@@ -2104,6 +2147,7 @@ int main() {
                             
                             // This section checks and handles the validity of move, including drawing the sprite
                             if (validated_move.type != Illegal) {
+                                std::cout << board.generate_FEN() << '\n';
     
                                 // If move is valid, set the sprite to the new position, delete the sprite that was residing in the to_location, and register the move with the board.
     
