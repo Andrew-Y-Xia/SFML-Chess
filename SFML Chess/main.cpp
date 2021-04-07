@@ -1753,6 +1753,28 @@ public:
         move_stack.pop_front();
     }
     
+    int Perft(int depth /* assuming >= 1 */) {
+        int nodes = 0;
+
+        std::forward_list<Move> moves;
+        generate_moves(moves);
+        
+        if (depth == 1) {
+            int counter = 0;
+            for (auto it = moves.begin(); it != moves.end(); ++it) {
+                counter++;
+            }
+            return counter;
+        }
+        
+        for (auto it = moves.begin(); it != moves.end(); ++it) {
+            process_move(*it);
+            nodes += Perft(depth - 1);
+            undo_last_move();
+        }
+        return nodes;
+    }
+    
     Move request_move(Move move){
         // This functions takes in a move requested by the board, and returns the correct type of it is,
         // whilst updating the internal board appropriately. It checks if the move is illegal, and whether it is a special move
@@ -1985,10 +2007,12 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("rnbqk2r/pppp1ppp/5n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1");
+    Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
 
+    std::cout << board.Perft(4);
+    
     board.set_texture_to_pieces();
     
     
