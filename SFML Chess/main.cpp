@@ -1,5 +1,6 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
+#include <ctime>
 #include <string>
 #include <ctype.h>
 #include <forward_list>
@@ -17,7 +18,6 @@
 // Global vars:
 sf::Texture textures[13];
 std::forward_list<sf::Sprite> sprites, promotion_sprites_white, promotion_sprites_black;
-int captures;
 
 struct Cords {
     int x: 8;
@@ -243,7 +243,7 @@ public:
         find_kings();
         generate_pins(0);
         generate_pins(1);
-        generate_moves(legal_moves);
+//        generate_moves(legal_moves);
     }
     
     Board(std::string str) {
@@ -596,10 +596,9 @@ public:
                 return c;
             }
             else if (squares[c.y][c.x].piece != Empty) {
-                if (squares[c.y][c.x].piece == King && squares[y][x].color != squares[c.y][c.x].color && ignore_king) {
-                    continue;
+                if (!(squares[c.y][c.x].piece == King && current_turn == squares[c.y][c.x].color && ignore_king)) {
+                    return c;
                 }
-                return c;
             }
         }
     }
@@ -754,6 +753,13 @@ public:
     bool is_in_between(Cords c1, Cords c2, Cords move_to) {
         return (std::min(c1.x, c2.x) <= move_to.x && move_to.x <= std::max(c1.x, c2.x) && std::min(c1.y, c2.y) <= move_to.y && move_to.y <= std::max(c1.y, c2.y));
     }
+    
+    void print_attacks_on_king() {
+        for (auto it = attacks_on_the_king.begin(); it != attacks_on_the_king.end(); ++it) {
+            std::cout << it->x << ", " << it->y << std::endl;
+        }
+//        std::cout << white_king_loc.x << white_king_loc.y;
+    }
 
 
     bool follows_check_rules(Move move) {
@@ -838,12 +844,16 @@ public:
         }
     }
     
-    void generate_moves(std::forward_list<Move>& moves, bool ignore_turns = false) {
-        moves.clear();
+    void reset_attacks_on_the_king() {
         attacks_on_the_king.clear();
         
         Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
         attacks_on_the_king = under_attack_cords(king_c.x, king_c.y, !current_turn);
+    }
+    
+    void generate_moves(std::forward_list<Move>& moves, bool ignore_turns = false) {
+        moves.clear();
+        reset_attacks_on_the_king();
         
 
         for (int y = 0; y < 8; y++) {
@@ -998,6 +1008,7 @@ public:
         int can_castle_queenside = current_turn ? black_can_castle_queenside : white_can_castle_queenside;
         int can_castle_kingside = current_turn ? black_can_castle_kingside : white_can_castle_kingside;
         
+        // Logic here -> yikes
         if (can_castle_queenside && squares[home_side_value][3].piece == Empty && squares[home_side_value][2].piece == Empty && squares[home_side_value][1].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn) && !is_square_under_attack(3, home_side_value, !current_turn) && !is_square_under_attack(2, home_side_value, !current_turn)) {
             move.to_c.x -= 2;
             move.type = Castle_Queenside;
@@ -1181,6 +1192,7 @@ public:
     }
     
     bool is_square_under_attack(int x, int y, int attacker_color) {
+//        std::cout << x << ' ' << y << '|' << !under_attack_cords(x, y, attacker_color).empty() << '\n';
         return !under_attack_cords(x, y, attacker_color).empty();
     }
     
@@ -1528,6 +1540,10 @@ public:
         return str;
     }
     
+    void clear_attacks_on_king() {
+        attacks_on_the_king.clear();
+    }
+    
     void process_move(Move move) {
         
         // Save move info onto past moves stack
@@ -1774,8 +1790,8 @@ public:
         move_stack.pop_front();
     }
     
-    int Perft(int depth /* assuming >= 1 */) {
-        int nodes = 0;
+    long Perft(int depth /* assuming >= 1 */) {
+        long nodes = 0;
 
         std::forward_list<Move> moves;
         generate_moves(moves);
@@ -1787,18 +1803,12 @@ public:
         if (depth == 1) {
             int counter = 0;
             for (auto it = moves.begin(); it != moves.end(); ++it) {
-                if (squares[it->to_c.y][it->to_c.x].piece != Empty) {
-                    captures += 1;
-                }
                 counter++;
             }
             return counter;
         }
         
         for (auto it = moves.begin(); it != moves.end(); ++it) {
-            if (squares[it->to_c.y][it->to_c.x].piece != Empty) {
-                captures += 1;
-            }
             process_move(*it);
             nodes += Perft(depth - 1);
             undo_last_move();
@@ -2044,16 +2054,32 @@ int main() {
     
     std::forward_list<Move> moves;
     board.generate_moves(moves);
+    
+    
+//    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
+//    std::cout << sizeof(board);
+    
+    clock_t begin = clock();
+    /*
+    int counter = 0;
     for (auto it = moves.begin(); it != moves.end(); ++it) {
         board.print_move(*it, true);
         board.process_move(*it);
-        std::cout << ": " << board.Perft(4) << std::endl;
+        counter += board.Perft(5);
+//        std::cout << ": " << board.Perft(4) << std::endl;
 //        board.debug_print();
 //        board.debug_pins();
         board.undo_last_move();
     }
-    std::cout << captures << std::endl;
+     */
 
+    std::cout << board.Perft(5) << std::endl;
+//    std::cout<<counter;
+
+    clock_t end = clock();
+    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    
+    std::cout << "Time: " << elapsed_secs << 's';
     
     
     board.set_texture_to_pieces();
