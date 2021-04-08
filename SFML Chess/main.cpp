@@ -603,6 +603,26 @@ public:
         }
     }
     
+    Cords ignore_square_incrementer(int x, int y, int increment_x, int increment_y, Cords ignore_squares[2]) {
+        Cords c = {x, y};
+        while (1) {
+            c.x += increment_x;
+            c.y += increment_y;
+            
+            
+            if (!is_within_bounds(c.x, c.y)) {
+                c.x -= increment_x;
+                c.y -= increment_y;
+                return c;
+            }
+            else if (squares[c.y][c.x].piece != Empty) {
+                if (!(c == ignore_squares[0] || c == ignore_squares[1])) {
+                    return c;
+                }
+            }
+        }
+    }
+    
     void debug_attacked_squares(int attacker_color) {
         std::cout << '\n' << '\n' << '\n' << '\n';
         for (int y = 0; y < 8; y++) {
@@ -920,6 +940,12 @@ public:
             }
         }
         
+        Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
+        int side_value = current_turn == 1 ? 4 : 3;
+
+        bool need_to_calculate_pins = abs(en_passant_cords.x - king_c.x) == abs(side_value - king_c.y) || en_passant_cords.x == king_c.x || side_value == king_c.y;
+         
+        
         // See if Pawn can capture two diagonal squares
         for (int i = -1; i < 3; i+=2) {
             if (is_within_bounds(x + i, y + direction_value)) {
@@ -931,12 +957,58 @@ public:
                 }
                 // See if pawn can capture through en passant
                 else if (en_passant_cords.y == y + direction_value && en_passant_cords.x == x + i) {
-                    move.to_c.y += direction_value;
-                    move.to_c.x += i;
-                    move.type = En_Passant;
-                    pawn_path_handle_push_move(moves, move, ignore_turns);
-                    move.to_c = orig;
-                    move.type = Normal;
+                    
+                    // Check to see making an en_passant will result in exposing a attack on the king
+                    bool en_passant_is_pinned = false;
+                    if (need_to_calculate_pins) {
+                        
+                        Cords ignore_squares[2] = {Cords{x, y}, Cords{en_passant_cords.x, y}};
+                        Cords increments[8] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
+                        for (int i = 0; i < 8; i++) {
+                            // Test every slider angle
+                            Cords c = ignore_square_incrementer(king_c.x, king_c.y, increments[i].x, increments[i].y, ignore_squares);
+                            if (c.x == x && c.y == y) {
+                                continue;
+                            }
+                            if (squares[c.y][c.x].color != current_turn) {
+                                switch (squares[c.y][c.x].piece) {
+                                    case Empty:
+                                    case Pawn:
+                                    case Knight:
+                                    case King:
+                                        break;
+                                    case Queen:
+                                        if (c.x == king_c.x || c.y == king_c.y || abs(king_c.y - c.y) == abs(king_c.x - c.x)) {
+                                            en_passant_is_pinned = true;
+                                        }
+                                        break;
+                                    case Bishop:
+                                        if (abs(king_c.y - c.y) == abs(king_c.x - c.x)) {
+                                            en_passant_is_pinned = true;
+                                        }
+                                        break;
+                                    case Rook:
+                                        if (c.x == king_c.x || c.y == king_c.y) {
+                                            en_passant_is_pinned = true;
+                                        }
+                                        break;
+                                    default:
+                                        std::cout << "Should not be reached under_attack_cords";
+                                }
+                            }
+                            if (en_passant_is_pinned) {
+                                break;
+                            }
+                        }
+                    }
+                    if (!en_passant_is_pinned) {
+                        move.to_c.y += direction_value;
+                        move.to_c.x += i;
+                        move.type = En_Passant;
+                        pawn_path_handle_push_move(moves, move, ignore_turns);
+                        move.to_c = orig;
+                        move.type = Normal;
+                    }
                 }
             }
         }
@@ -2048,7 +2120,7 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    Board board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 0");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
     
