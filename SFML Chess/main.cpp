@@ -914,41 +914,37 @@ public:
 //        debug_print_moves(moves);
     }
     
-    bool calulate_en_passant_pins(const Cords &king_c, int x, int y) {
+    bool calculate_en_passant_pins(const Cords &king_c, int x, int y, int incr_x, int incr_y) {
 
         Cords ignore_squares[2] = {Cords{x, y}, Cords{en_passant_cords.x, y}};
-        Cords increments[8] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
-        for (int i = 0; i < 8; i++) {
-            // Test every slider angle
-            Cords c = ignore_square_incrementer(king_c.x, king_c.y, increments[i].x, increments[i].y, ignore_squares);
-            if (c.x == x && c.y == y) {
-                continue;
-            }
-            if (squares[c.y][c.x].color != current_turn) {
-                switch (squares[c.y][c.x].piece) {
-                    case Empty:
-                    case Pawn:
-                    case Knight:
-                    case King:
-                        break;
-                    case Queen:
-                        if (c.y == king_c.y || abs(king_c.y - c.y) == abs(king_c.x - c.x)) {
-                            return true;
-                        }
-                        break;
-                    case Bishop:
-                        if (abs(king_c.y - c.y) == abs(king_c.x - c.x)) {
-                            return true;
-                        }
-                        break;
-                    case Rook:
-                        if (c.y == king_c.y) {
-                            return true;
-                        }
-                        break;
-                    default:
-                        std::cout << "Should not be reached under_attack_cords";
-                }
+        Cords c = ignore_square_incrementer(king_c.x, king_c.y, incr_x, incr_y, ignore_squares);
+        if (c.x == x && c.y == y) {
+            std::cout << "Shouldn't occur calculate_en_passant_pins";
+        }
+        if (squares[c.y][c.x].color != current_turn) {
+            switch (squares[c.y][c.x].piece) {
+                case Empty:
+                case Pawn:
+                case Knight:
+                case King:
+                    break;
+                case Queen:
+                    if (c.y == king_c.y || abs(king_c.y - c.y) == abs(king_c.x - c.x)) {
+                        return true;
+                    }
+                    break;
+                case Bishop:
+                    if (abs(king_c.y - c.y) == abs(king_c.x - c.x)) {
+                        return true;
+                    }
+                    break;
+                case Rook:
+                    if (c.y == king_c.y) {
+                        return true;
+                    }
+                    break;
+                default:
+                    std::cout << "Should not be reached under_attack_cords";
             }
         }
         return false;
@@ -1003,7 +999,9 @@ public:
                     bool en_passant_is_pinned = false;
                     if (need_to_calculate_pins) {
                         // Check to see making an en_passant will result in exposing an attack on the king
-                        en_passant_is_pinned = calulate_en_passant_pins(king_c, x, y);
+                        int incr_x = sgn(en_passant_cords.x - king_c.x);
+                        int incr_y = sgn(side_value - king_c.y);
+                        en_passant_is_pinned = calculate_en_passant_pins(king_c, x, y, incr_x, incr_y);
                     }
                     if (!en_passant_is_pinned) {
                         move.to_c.y += direction_value;
@@ -2127,7 +2125,7 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
+    Board board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 0");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
     
@@ -2153,7 +2151,7 @@ int main() {
      */
 
     
-    std::cout << board.Perft(6) << std::endl;
+    std::cout << board.Perft(7) << std::endl;
 //    std::cout<<counter;
 
     clock_t end = clock();
