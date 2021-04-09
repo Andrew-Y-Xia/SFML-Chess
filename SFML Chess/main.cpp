@@ -374,7 +374,7 @@ public:
         else {
             char c = num_to_char(en_passant_cords.x);
             str.append(1, c);
-            str.append(std::to_string(7 - en_passant_cords.y));
+            str.append(std::to_string(8 - en_passant_cords.y));
         }
 
         str.append(1, ' ');
@@ -527,7 +527,7 @@ public:
                 default:
                     std::cout << "Should not have been reached. En Passant square cords are wrong";
             }
-            y = 7 - (en_passant_square[1] - '0');
+            y = 8 - (en_passant_square[1] - '0');
             
             en_passant_cords.x = x;
             en_passant_cords.y = y;
@@ -794,6 +794,9 @@ public:
         if (!attacks_on_the_king.empty()) {
             // Iterate through the squares that are attacking king
             for (auto attacking_piece = attacks_on_the_king.begin(); attacking_piece != attacks_on_the_king.end(); ++attacking_piece) {
+                if (move.type == En_Passant && move.from_c.y == attacking_piece->y && move.to_c.x == attacking_piece->x) {
+                    continue;
+                }
                 if (!is_in_between(*attacking_piece, king_c, move.to_c)) {
                     return false;
                 }
@@ -911,6 +914,46 @@ public:
 //        debug_print_moves(moves);
     }
     
+    bool calulate_en_passant_pins(const Cords &king_c, int x, int y) {
+
+        Cords ignore_squares[2] = {Cords{x, y}, Cords{en_passant_cords.x, y}};
+        Cords increments[8] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
+        for (int i = 0; i < 8; i++) {
+            // Test every slider angle
+            Cords c = ignore_square_incrementer(king_c.x, king_c.y, increments[i].x, increments[i].y, ignore_squares);
+            if (c.x == x && c.y == y) {
+                continue;
+            }
+            if (squares[c.y][c.x].color != current_turn) {
+                switch (squares[c.y][c.x].piece) {
+                    case Empty:
+                    case Pawn:
+                    case Knight:
+                    case King:
+                        break;
+                    case Queen:
+                        if (c.y == king_c.y || abs(king_c.y - c.y) == abs(king_c.x - c.x)) {
+                            return true;
+                        }
+                        break;
+                    case Bishop:
+                        if (abs(king_c.y - c.y) == abs(king_c.x - c.x)) {
+                            return true;
+                        }
+                        break;
+                    case Rook:
+                        if (c.y == king_c.y) {
+                            return true;
+                        }
+                        break;
+                    default:
+                        std::cout << "Should not be reached under_attack_cords";
+                }
+            }
+        }
+        return false;
+    }
+    
     void generate_pawn_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
         
         int direction_value, pawn_start_y, opposite_side_value;
@@ -957,49 +1000,10 @@ public:
                 }
                 // See if pawn can capture through en passant
                 else if (en_passant_cords.y == y + direction_value && en_passant_cords.x == x + i) {
-                    
-                    // Check to see making an en_passant will result in exposing a attack on the king
                     bool en_passant_is_pinned = false;
                     if (need_to_calculate_pins) {
-                        
-                        Cords ignore_squares[2] = {Cords{x, y}, Cords{en_passant_cords.x, y}};
-                        Cords increments[8] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
-                        for (int i = 0; i < 8; i++) {
-                            // Test every slider angle
-                            Cords c = ignore_square_incrementer(king_c.x, king_c.y, increments[i].x, increments[i].y, ignore_squares);
-                            if (c.x == x && c.y == y) {
-                                continue;
-                            }
-                            if (squares[c.y][c.x].color != current_turn) {
-                                switch (squares[c.y][c.x].piece) {
-                                    case Empty:
-                                    case Pawn:
-                                    case Knight:
-                                    case King:
-                                        break;
-                                    case Queen:
-                                        if (c.x == king_c.x || c.y == king_c.y || abs(king_c.y - c.y) == abs(king_c.x - c.x)) {
-                                            en_passant_is_pinned = true;
-                                        }
-                                        break;
-                                    case Bishop:
-                                        if (abs(king_c.y - c.y) == abs(king_c.x - c.x)) {
-                                            en_passant_is_pinned = true;
-                                        }
-                                        break;
-                                    case Rook:
-                                        if (c.x == king_c.x || c.y == king_c.y) {
-                                            en_passant_is_pinned = true;
-                                        }
-                                        break;
-                                    default:
-                                        std::cout << "Should not be reached under_attack_cords";
-                                }
-                            }
-                            if (en_passant_is_pinned) {
-                                break;
-                            }
-                        }
+                        // Check to see making an en_passant will result in exposing an attack on the king
+                        en_passant_is_pinned = calulate_en_passant_pins(king_c, x, y);
                     }
                     if (!en_passant_is_pinned) {
                         move.to_c.y += direction_value;
@@ -1874,7 +1878,10 @@ public:
         
         if (depth == 1) {
             int counter = 0;
+//            std::cout << "\n\nInner:\n";
             for (auto it = moves.begin(); it != moves.end(); ++it) {
+//                print_move(*it, true);
+//                std::cout << '\n';
                 counter++;
             }
             return counter;
@@ -2120,7 +2127,7 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 0");
+    Board board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
     
@@ -2137,23 +2144,24 @@ int main() {
     for (auto it = moves.begin(); it != moves.end(); ++it) {
         board.print_move(*it, true);
         board.process_move(*it);
-        counter += board.Perft(5);
-//        std::cout << ": " << board.Perft(4) << std::endl;
+//        counter += board.Perft(5);
+        std::cout << ": " << board.Perft(0) << std::endl;
 //        board.debug_print();
 //        board.debug_pins();
         board.undo_last_move();
     }
      */
 
-    std::cout << board.Perft(5) << std::endl;
+    
+    std::cout << board.Perft(6) << std::endl;
 //    std::cout<<counter;
 
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
     
-    std::cout << "Time: " << elapsed_secs << 's';
+    std::cout << "Time: " << elapsed_secs << "s\n";
     
-    
+    board.clear_attacks_on_king();
     board.set_texture_to_pieces();
     
     
