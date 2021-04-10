@@ -18,6 +18,7 @@
 // Global vars:
 sf::Texture textures[13];
 std::forward_list<sf::Sprite> sprites, promotion_sprites_white, promotion_sprites_black;
+int incre8[8];
 
 struct Cords {
     int x: 8;
@@ -176,6 +177,37 @@ void debug_print_moves(std::forward_list<Move> moves) {
     }
 }
 
+int increment_to_index(Cords c) {
+    int i = 3*(c.x + 1) + (c.y+1);
+    if (i > 4) {
+        i--;
+    }
+    return i;
+}
+
+Cords index_to_increment(int i) {
+    switch (i) {
+        case 0:
+            return Cords{-1, -1};
+        case 1:
+            return Cords{-1, 0};
+        case 2:
+            return Cords{-1, 1};
+        case 3:
+            return Cords{0, -1};
+        case 4:
+            return Cords{0, 1};
+        case 5:
+            return Cords{1, -1};
+        case 6:
+            return Cords{1, 0};
+        case 7:
+            return Cords{1, 1};
+        default:
+            std::cout << "Should not have occured index_to_increment\n";
+    }
+}
+
 
 class Board {
 private:
@@ -241,8 +273,8 @@ public:
     
     void post_readLEN() {
         find_kings();
-        generate_pins(0);
-        generate_pins(1);
+        generate_pins(0, incre8);
+        generate_pins(1, incre8);
 //        generate_moves(legal_moves);
     }
     
@@ -732,11 +764,13 @@ public:
     }
     
     
-    void delete_pins(int color) {
+    void delete_pins(int color, int* increments) {
+        // Dont pass anything other than array size 8 to increments!!! Otherwise segfault
         for (auto it = pinning.begin(); it != pinning.end(); ++it) {
             // If the piece pinning is of opposite color, delete the pin data (deletion is neccesary otherwise iterator will iterate over it next time)
             // Also, look up the piece being pinned and delete this cord from the list
-            if (squares[it->first.y][it->first.x].color != color) {
+            
+            if (squares[it->first.y][it->first.x].color != color && *(increments + increment_to_index(Cords{sgn(it->first.x - it->second.x), sgn(it->first.y - it->second.y)}))) {
                 pinned_by.erase(it->second);
                 /*
                  if (pinned_by[*(it->second.begin())].empty()) {
@@ -748,22 +782,25 @@ public:
         }
     }
     
-    void generate_pins(int color) {
+    void generate_pins(int color, int* increments) {
+        // Dont pass anything other than array size 8 to increments!!! Otherwise segfault
         // Color 
         Cords king, pinned_piece, pinning_piece;
         
         king = color == 1 ? black_king_loc : white_king_loc;
         
 
-
         const int size = 8;
-        Cords increments[size] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
+        Cords c;
         for (int i = 0; i < size; i++) {
-            pin_slider(king.x, king.y, (increments + i)->x, (increments + i)->y, pinned_piece, pinning_piece);
-            if (pinned_piece.x != -1) {
-//                std::cout << "Found pinned piece: " << pinned_piece.x << ' ' << pinned_piece.y << " | pinner: " << pinning_piece.x << ' ' << pinning_piece.y <<  '\n';
-                pinned_by[Cords{pinned_piece.x, pinned_piece.y}] = Cords{pinning_piece.x, pinning_piece.y};
-                pinning[Cords{pinning_piece.x, pinning_piece.y}] = Cords{pinned_piece.x, pinned_piece.y};
+            if (*(increments + i)) {
+                c = index_to_increment(i);
+                pin_slider(king.x, king.y, c.x, c.y, pinned_piece, pinning_piece);
+                if (pinned_piece.x != -1) {
+//                    std::cout << "Found pinned piece: " << pinned_piece.x << ' ' << pinned_piece.y << " | pinner: " << pinning_piece.x << ' ' << pinning_piece.y <<  '\n';
+                    pinned_by[Cords{pinned_piece.x, pinned_piece.y}] = Cords{pinning_piece.x, pinning_piece.y};
+                    pinning[Cords{pinning_piece.x, pinning_piece.y}] = Cords{pinned_piece.x, pinned_piece.y};
+                }
             }
         }
         
@@ -1511,6 +1548,10 @@ public:
         }
     }
     
+    void print_cords(Cords c) {
+        std::cout << "Cords{" << c.x << ", " << c.y << '}';
+    }
+    
     
     // Legal moves must be generated before game end evals are called
     bool has_been_checkmated() {
@@ -1666,13 +1707,10 @@ public:
             if (current_turn == 1) {
                 black_can_castle_kingside = false;
                 black_can_castle_queenside = false;
-            // Change the king_loc as well
-                black_king_loc = move.to_c;
             }
             else {
                 white_can_castle_kingside = false;
                 white_can_castle_queenside = false;
-                white_king_loc = move.to_c;
             }
         }
         
@@ -1702,20 +1740,46 @@ public:
         // The reason this is done pre-actual move is because delete_pins *must* be called before the board is changed.
         Cords king_c;
         int generate_pins_info[2] = {0, 0};
-        if (!(move.type == Castle_Kingside || move.type == Castle_Queenside || move.type == En_Passant)) {
+        int increments_white[8] = {0};
+        int increments_black[8] = {0};
+        int* increments;
+        king_c = current_turn == 1 ? black_king_loc : white_king_loc;
+
+        if (!(move.type == Castle_Kingside || move.type == Castle_Queenside || move.type == En_Passant || move.from_c == king_c)) {
             for (int i = 0; i < 2; i++) {
+                
                 king_c = i == 1 ? black_king_loc : white_king_loc;
-                if (abs(move.from_c.x - king_c.x) == abs(move.from_c.y - king_c.y) || move.from_c.x == king_c.x || move.from_c.y == king_c.y || abs(move.to_c.x - king_c.x) == abs(move.to_c.y - king_c.y) || move.to_c.x == king_c.x || move.to_c.y == king_c.y) {
-                    // Delete the old pins of color
-                    delete_pins(i);
+                increments = i == 1 ? increments_black : increments_white;
+                
+
+                if (abs(move.from_c.x - king_c.x) == abs(move.from_c.y - king_c.y) || move.from_c.x == king_c.x || move.from_c.y == king_c.y) {
+                    *(increments + increment_to_index(Cords{sgn(move.from_c.x - king_c.x), sgn(move.from_c.y - king_c.y)})) = 1;
                     generate_pins_info[i] = 1;
+                }
+                
+                if (abs(move.to_c.x - king_c.x) == abs(move.to_c.y - king_c.y) || move.to_c.x == king_c.x || move.to_c.y == king_c.y) {
+                    *(increments + increment_to_index(Cords{sgn(move.to_c.x - king_c.x), sgn(move.to_c.y - king_c.y)})) = 1;
+                    generate_pins_info[i] = 1;
+                }
+                
+                if (generate_pins_info[i]) {
+                    delete_pins(i, increments);
                 }
             }
         } else {
-            delete_pins(0);
-            delete_pins(1);
-            generate_pins_info[0] = 1;
-            generate_pins_info[1] = 1;
+            delete_pins(0, incre8);
+            delete_pins(1, incre8);
+            generate_pins_info[0] = 2;
+            generate_pins_info[1] = 2;
+        }
+        
+        if (squares[move.from_c.y][move.from_c.x].piece == King) {
+            if (current_turn == 1) {
+                black_king_loc = move.to_c;
+            }
+            else {
+                white_king_loc = move.to_c;
+            }
         }
         
         // Actual act of moving pieces
@@ -1723,12 +1787,21 @@ public:
         
         
         
-        
         // Finish pins
-        // TODO: maybe only generate specific increments when needed vs all eight of them?
         for (int i = 0; i < 2; i++) {
-            if (generate_pins_info[i]) {
-                generate_pins(i);
+            increments = i == 1 ? increments_black : increments_white;
+            if (generate_pins_info[i] == 1) {
+                
+                /*
+                for (int x = 0; x < 8; x++) {
+                    std::cout << *(increments + x) << ' ';
+                }
+                std::cout << '\n';
+                 */
+                generate_pins(i, increments);
+            }
+            else if (generate_pins_info[i] == 2) {
+                generate_pins(i, incre8);
             }
         }
         
@@ -1772,20 +1845,32 @@ public:
         
         Cords king_c;
         int generate_pins_info[2] = {0, 0};
-        if (!(move_data.move.type == Castle_Kingside || move_data.move.type == Castle_Queenside || move_data.move.type == En_Passant)) {
+        int increments_white[8] = {0};
+        int increments_black[8] = {0};
+        int* increments;
+        king_c = current_turn == 1 ? black_king_loc : white_king_loc;
+
+        if (!(move_data.move.type == Castle_Kingside || move_data.move.type == Castle_Queenside || move_data.move.type == En_Passant || move_data.move.to_c == king_c)) {
             for (int i = 0; i < 2; i++) {
                 king_c = i == 1 ? black_king_loc : white_king_loc;
-                if (abs(move_data.move.from_c.x - king_c.x) == abs(move_data.move.from_c.y - king_c.y) || move_data.move.from_c.x == king_c.x || move_data.move.from_c.y == king_c.y || abs(move_data.move.to_c.x - king_c.x) == abs(move_data.move.to_c.y - king_c.y) || move_data.move.to_c.x == king_c.x || move_data.move.to_c.y == king_c.y) {
-                    // Delete the old pins of color
-                    delete_pins(i);
+                increments = i == 1 ? increments_white : increments_black;
+                if (abs(move_data.move.from_c.x - king_c.x) == abs(move_data.move.from_c.y - king_c.y) || move_data.move.from_c.x == king_c.x || move_data.move.from_c.y == king_c.y) {
+                    *(increments + increment_to_index(Cords{sgn(move_data.move.from_c.x - king_c.x), sgn(move_data.move.from_c.y - king_c.y)})) = 1;
                     generate_pins_info[i] = 1;
+                }
+                if (abs(move_data.move.to_c.x - king_c.x) == abs(move_data.move.to_c.y - king_c.y) || move_data.move.to_c.x == king_c.x || move_data.move.to_c.y == king_c.y) {
+                    *(increments + increment_to_index(Cords{sgn(move_data.move.to_c.x - king_c.x), sgn(move_data.move.to_c.y - king_c.y)})) = 1;
+                    generate_pins_info[i] = 1;
+                }
+                if (generate_pins_info[i]) {
+                    delete_pins(i, increments);
                 }
             }
         } else {
-            delete_pins(0);
-            delete_pins(1);
-            generate_pins_info[0] = 1;
-            generate_pins_info[1] = 1;
+            delete_pins(0, incre8);
+            delete_pins(1, incre8);
+            generate_pins_info[0] = 2;
+            generate_pins_info[1] = 2;
         }
         
         
@@ -1850,8 +1935,12 @@ public:
         
         
         for (int i = 0; i < 2; i++) {
-            if (generate_pins_info[i]) {
-                generate_pins(i);
+            increments = i == 1 ? increments_black : increments_white;
+            if (generate_pins_info[i] == 1) {
+                generate_pins(i, increments);
+            }
+            else if (generate_pins_info[i] == 2) {
+                generate_pins(i, incre8);
             }
         }
         
@@ -2084,6 +2173,10 @@ int main() {
     std::cout << a[Cords{1, 2}].x;
     */
     
+    for (int i = 0; i < 8; i++) {
+        incre8[i] = 1;
+    }
+    
     sf::Sprite* sprite_being_dragged;
     sprite_being_dragged = NULL;
     
@@ -2125,7 +2218,7 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 0");
+    Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
     
@@ -2151,7 +2244,7 @@ int main() {
      */
 
     
-    std::cout << board.Perft(7) << std::endl;
+    std::cout << board.Perft(6) << std::endl;
 //    std::cout<<counter;
 
     clock_t end = clock();
