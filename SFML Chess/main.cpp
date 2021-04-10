@@ -13,11 +13,18 @@
 #define SCALE 1.3
 #define OFFSET 2
 #define ASDF std::cout << "asdf" << std::endl
+#define INCRE8 {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}}
+
+struct Cords;
+struct cords_eq;
 
 
 // Global vars:
 sf::Texture textures[13];
 std::forward_list<sf::Sprite> sprites, promotion_sprites_white, promotion_sprites_black;
+
+google::dense_hash_map<Cords, int, const std::hash<Cords>, cords_eq> increment_map8;
+
 
 struct Cords {
     int x: 8;
@@ -241,8 +248,9 @@ public:
     
     void post_readLEN() {
         find_kings();
-        generate_pins(0);
-        generate_pins(1);
+        
+        generate_pins(0, increment_map8);
+        generate_pins(1, increment_map8);
 //        generate_moves(legal_moves);
     }
     
@@ -732,11 +740,11 @@ public:
     }
     
     
-    void delete_pins(int color) {
+    void delete_pins(int color, google::dense_hash_map<Cords, int, const std::hash<Cords>, cords_eq>& increments) {
         for (auto it = pinning.begin(); it != pinning.end(); ++it) {
             // If the piece pinning is of opposite color, delete the pin data (deletion is neccesary otherwise iterator will iterate over it next time)
             // Also, look up the piece being pinned and delete this cord from the list
-            if (squares[it->first.y][it->first.x].color != color) {
+            if (squares[it->first.y][it->first.x].color != color && increments.find(Cords{it->first.x - it->second.x, it->first.y - it->second.y})->second != 0) {
                 pinned_by.erase(it->second);
                 /*
                  if (pinned_by[*(it->second.begin())].empty()) {
@@ -748,7 +756,7 @@ public:
         }
     }
     
-    void generate_pins(int color) {
+    void generate_pins(int color, google::dense_hash_map<Cords, int, const std::hash<Cords>, cords_eq>& increments) {
         // Color 
         Cords king, pinned_piece, pinning_piece;
         
@@ -756,14 +764,14 @@ public:
         
 
 
-        const int size = 8;
-        Cords increments[size] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
-        for (int i = 0; i < size; i++) {
-            pin_slider(king.x, king.y, (increments + i)->x, (increments + i)->y, pinned_piece, pinning_piece);
-            if (pinned_piece.x != -1) {
-//                std::cout << "Found pinned piece: " << pinned_piece.x << ' ' << pinned_piece.y << " | pinner: " << pinning_piece.x << ' ' << pinning_piece.y <<  '\n';
-                pinned_by[Cords{pinned_piece.x, pinned_piece.y}] = Cords{pinning_piece.x, pinning_piece.y};
-                pinning[Cords{pinning_piece.x, pinning_piece.y}] = Cords{pinned_piece.x, pinned_piece.y};
+        for (auto it = increments.begin(); it != increments.end(); ++it) {
+            if (it->second != 0) {
+                pin_slider(king.x, king.y, it->first.x, it->first.y, pinned_piece, pinning_piece);
+                if (pinned_piece.x != -1) {
+    //                std::cout << "Found pinned piece: " << pinned_piece.x << ' ' << pinned_piece.y << " | pinner: " << pinning_piece.x << ' ' << pinning_piece.y <<  '\n';
+                    pinned_by[Cords{pinned_piece.x, pinned_piece.y}] = Cords{pinning_piece.x, pinning_piece.y};
+                    pinning[Cords{pinning_piece.x, pinning_piece.y}] = Cords{pinned_piece.x, pinned_piece.y};
+                }
             }
         }
         
@@ -1701,21 +1709,28 @@ public:
         // If moved to/from squares in pin paths, delete old pins, prep recalculate pins
         // The reason this is done pre-actual move is because delete_pins *must* be called before the board is changed.
         Cords king_c;
+        google::dense_hash_map<Cords, int, const std::hash<Cords>, cords_eq> increments_white, increments_black;
+        auto& increments = increments_white;
         int generate_pins_info[2] = {0, 0};
         if (!(move.type == Castle_Kingside || move.type == Castle_Queenside || move.type == En_Passant)) {
             for (int i = 0; i < 2; i++) {
                 king_c = i == 1 ? black_king_loc : white_king_loc;
-                if (abs(move.from_c.x - king_c.x) == abs(move.from_c.y - king_c.y) || move.from_c.x == king_c.x || move.from_c.y == king_c.y || abs(move.to_c.x - king_c.x) == abs(move.to_c.y - king_c.y) || move.to_c.x == king_c.x || move.to_c.y == king_c.y) {
-                    // Delete the old pins of color
-                    delete_pins(i);
+                increments = i == 1 ? increments_black : increments_white;
+                if (abs(move.from_c.x - king_c.x) == abs(move.from_c.y - king_c.y) || move.from_c.x == king_c.x || move.from_c.y == king_c.y) {
+                    increments[Cords{move.from_c.x - king_c.x, move.from_c.y - king_c.y}] = 1;
+                    delete_pins(i, increments);
                     generate_pins_info[i] = 1;
+                }
+                if (abs(move.to_c.x - king_c.x) == abs(move.to_c.y - king_c.y) || move.to_c.x == king_c.x || move.to_c.y == king_c.y) {
+                    increments[Cords{move.to_c.x - king_c.x, move.to_c.y - king_c.y}] = 1;
+                    delete_pins(i, increments);
                 }
             }
         } else {
-            delete_pins(0);
-            delete_pins(1);
-            generate_pins_info[0] = 1;
-            generate_pins_info[1] = 1;
+            delete_pins(0, increment_map8);
+            delete_pins(1, increment_map8);
+            increments_black = increment_map8;
+            increments_white = increment_map8;
         }
         
         // Actual act of moving pieces
@@ -1725,11 +1740,11 @@ public:
         
         
         // Finish pins
-        // TODO: maybe only generate specific increments when needed vs all eight of them?
-        for (int i = 0; i < 2; i++) {
-            if (generate_pins_info[i]) {
-                generate_pins(i);
-            }
+        if (!increments_black.empty()) {
+            generate_pins(0, increments_black);
+        }
+        if (!increments_black.empty()) {
+            generate_pins(1, increments_white);
         }
         
         /*
@@ -1771,21 +1786,28 @@ public:
         current_turn = !current_turn;
         
         Cords king_c;
+        google::dense_hash_map<Cords, int, const std::hash<Cords>, cords_eq> increments_white, increments_black;
+        auto& increments = increments_white;
         int generate_pins_info[2] = {0, 0};
         if (!(move_data.move.type == Castle_Kingside || move_data.move.type == Castle_Queenside || move_data.move.type == En_Passant)) {
             for (int i = 0; i < 2; i++) {
                 king_c = i == 1 ? black_king_loc : white_king_loc;
-                if (abs(move_data.move.from_c.x - king_c.x) == abs(move_data.move.from_c.y - king_c.y) || move_data.move.from_c.x == king_c.x || move_data.move.from_c.y == king_c.y || abs(move_data.move.to_c.x - king_c.x) == abs(move_data.move.to_c.y - king_c.y) || move_data.move.to_c.x == king_c.x || move_data.move.to_c.y == king_c.y) {
-                    // Delete the old pins of color
-                    delete_pins(i);
+                increments = i == 1 ? increments_black : increments_white;
+                if (abs(move_data.move.from_c.x - king_c.x) == abs(move_data.move.from_c.y - king_c.y) || move_data.move.from_c.x == king_c.x || move_data.move.from_c.y == king_c.y) {
+                    increments[Cords{move_data.move.from_c.x - king_c.x, move_data.move.from_c.y - king_c.y}] = 1;
+                    delete_pins(i, increments);
                     generate_pins_info[i] = 1;
+                }
+                if (abs(move.to_c.x - king_c.x) == abs(move.to_c.y - king_c.y) || move.to_c.x == king_c.x || move.to_c.y == king_c.y) {
+                    increments[Cords{move.to_c.x - king_c.x, move.to_c.y - king_c.y}] = 1;
+                    delete_pins(i, increments);
                 }
             }
         } else {
-            delete_pins(0);
-            delete_pins(1);
-            generate_pins_info[0] = 1;
-            generate_pins_info[1] = 1;
+            delete_pins(0, increment_map8);
+            delete_pins(1, increment_map8);
+            increments_black = increment_map8;
+            increments_white = increment_map8;
         }
         
         
@@ -2076,6 +2098,10 @@ void normal_move_sprite_handler(Move validated_move, sf::Sprite* sprite_being_dr
 
 
 int main() {
+    Cords increments[8] = INCRE8;
+    for (int i = 0; i < 8; i++) {
+        increment_map[increments[i]] = 1;
+    }
     
     /*
     google::dense_hash_map<Cords, Cords, std::hash<Cords>, cords_eq> a;
@@ -2151,7 +2177,7 @@ int main() {
      */
 
     
-    std::cout << board.Perft(7) << std::endl;
+    std::cout << board.Perft(5) << std::endl;
 //    std::cout<<counter;
 
     clock_t end = clock();
