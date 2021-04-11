@@ -1852,16 +1852,20 @@ public:
 
         if (!(move_data.move.type == Castle_Kingside || move_data.move.type == Castle_Queenside || move_data.move.type == En_Passant || move_data.move.to_c == king_c)) {
             for (int i = 0; i < 2; i++) {
+                
                 king_c = i == 1 ? black_king_loc : white_king_loc;
-                increments = i == 1 ? increments_white : increments_black;
+                increments = i == 1 ? increments_black : increments_white;
+                
                 if (abs(move_data.move.from_c.x - king_c.x) == abs(move_data.move.from_c.y - king_c.y) || move_data.move.from_c.x == king_c.x || move_data.move.from_c.y == king_c.y) {
                     *(increments + increment_to_index(Cords{sgn(move_data.move.from_c.x - king_c.x), sgn(move_data.move.from_c.y - king_c.y)})) = 1;
                     generate_pins_info[i] = 1;
                 }
+                
                 if (abs(move_data.move.to_c.x - king_c.x) == abs(move_data.move.to_c.y - king_c.y) || move_data.move.to_c.x == king_c.x || move_data.move.to_c.y == king_c.y) {
                     *(increments + increment_to_index(Cords{sgn(move_data.move.to_c.x - king_c.x), sgn(move_data.move.to_c.y - king_c.y)})) = 1;
                     generate_pins_info[i] = 1;
                 }
+                
                 if (generate_pins_info[i]) {
                     delete_pins(i, increments);
                 }
@@ -2218,7 +2222,7 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    Board board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
     
@@ -2236,7 +2240,7 @@ int main() {
         board.print_move(*it, true);
         board.process_move(*it);
 //        counter += board.Perft(5);
-        std::cout << ": " << board.Perft(0) << std::endl;
+        std::cout << ": " << board.Perft(1) << std::endl;
 //        board.debug_print();
 //        board.debug_pins();
         board.undo_last_move();
