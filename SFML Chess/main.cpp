@@ -237,6 +237,8 @@ private:
     
     std::forward_list<Move_data> move_stack;
     
+    int black_piece_values, white_piece_values;
+    
 public:
     Board() {
         standard_setup();
@@ -276,6 +278,7 @@ public:
         generate_pins(0, incre8);
         generate_pins(1, incre8);
 //        generate_moves(legal_moves);
+        reset_piece_values();
     }
     
     Board(std::string str) {
@@ -286,6 +289,45 @@ public:
     
     int get_current_turn() {
         return current_turn;
+    }
+    
+    void reset_piece_values() {
+        white_piece_values = 0;
+        black_piece_values = 0;
+        
+        
+        int temp;
+        for (int y = 0; y < 8; y++) {
+            for (int x = 0; x < 8; x++) {
+                
+                switch (squares[y][x].piece) {
+                    case Empty:
+                    case King:
+                        break;
+                    case Pawn:
+                        temp += 10;
+                        break;
+                    case Knight:
+                        temp += 30;
+                        break;
+                    case Bishop:
+                        temp += 33;
+                        break;
+                    case Rook:
+                        temp += 50;
+                        break;
+                    case Queen:
+                        temp += 90;
+                        break;
+                }
+                if (squares[y][x].color == 1) {
+                    black_piece_values += temp;
+                }
+                else {
+                    white_piece_values += temp;
+                }
+            }
+        }
     }
     
     void set_texture_to_pieces() {
@@ -911,44 +953,46 @@ public:
         attacks_on_the_king = under_attack_cords(king_c.x, king_c.y, !current_turn);
     }
     
-    void generate_moves(std::forward_list<Move>& moves, bool ignore_turns = false) {
+    int generate_moves(std::forward_list<Move>& moves, bool ignore_turns = false) {
+        int moves_counter = 0;
         moves.clear();
         reset_attacks_on_the_king();
         
 
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
-
-                switch (squares[y][x].piece) {
+                
+                if (squares[y][x].color == current_turn) {
+                    switch (squares[y][x].piece) {
     
-                    case Empty:
-                        continue;
-                        break;
-                    case Pawn:
-                        generate_pawn_moves(moves, x, y, ignore_turns);
-                        break;
-                    case Knight:
-                        generate_knight_moves(moves, x, y, ignore_turns);
-                        break;
-                    case Bishop:
-                        generate_bishop_moves(moves, x, y, ignore_turns);
-                        break;
-                    case Rook:
-                        generate_rook_moves(moves, x, y, ignore_turns);
-                        break;
-                    case Queen:
-                        generate_queen_moves(moves, x, y, ignore_turns);
-                        break;
-                    case King:
-                        generate_king_moves(moves, x, y, ignore_turns);
-                        break;
-                    default:
-                        std::cout << "Should not have been reached at generate_moves." << std::endl;
+                        case Empty:
+                            break;
+                        case Pawn:
+                            moves_counter += generate_pawn_moves(moves, x, y, ignore_turns);
+                            break;
+                        case Knight:
+                            moves_counter += generate_knight_moves(moves, x, y, ignore_turns);
+                            break;
+                        case Bishop:
+                            moves_counter += generate_bishop_moves(moves, x, y, ignore_turns);
+                            break;
+                        case Rook:
+                            moves_counter += generate_rook_moves(moves, x, y, ignore_turns);
+                            break;
+                        case Queen:
+                            moves_counter += generate_queen_moves(moves, x, y, ignore_turns);
+                            break;
+                        case King:
+                            moves_counter += generate_king_moves(moves, x, y, ignore_turns);
+                            break;
+                        default:
+                            std::cout << "Should not have been reached at generate_moves." << std::endl;
+                    }
                 }
-
             }
         }
 //        debug_print_moves(moves);
+        return moves_counter;
     }
     
     bool calculate_en_passant_pins(const Cords &king_c, int x, int y, int incr_x, int incr_y) {
@@ -987,7 +1031,8 @@ public:
         return false;
     }
     
-    void generate_pawn_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    int generate_pawn_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        int moves_counter = 0;
         
         int direction_value, pawn_start_y, opposite_side_value;
         Cords orig = Cords {x, y};
@@ -1006,12 +1051,12 @@ public:
         // Check for going straight ahead
         if (squares[y + direction_value][x].piece == Empty) {
             move.to_c.y += direction_value;
-            pawn_path_handle_push_move(moves, move, ignore_turns);
+            moves_counter += pawn_path_handle_push_move(moves, move, ignore_turns);
             move.to_c = orig;
             // Check for double length for first pawn move
             if (y == pawn_start_y && squares[y + direction_value * 2][x].piece == Empty) {
                 move.to_c.y += direction_value * 2;
-                pawn_path_handle_push_move(moves, move, ignore_turns);
+                moves_counter += pawn_path_handle_push_move(moves, move, ignore_turns);
                 move.to_c = orig;
             }
         }
@@ -1028,7 +1073,7 @@ public:
                 if (squares[y + direction_value][x + i].piece != Empty) {
                     move.to_c.y += direction_value;
                     move.to_c.x += i;
-                    pawn_path_handle_push_move(moves, move, ignore_turns);
+                    moves_counter += pawn_path_handle_push_move(moves, move, ignore_turns);
                     move.to_c = orig;
                 }
                 // See if pawn can capture through en passant
@@ -1044,18 +1089,19 @@ public:
                         move.to_c.y += direction_value;
                         move.to_c.x += i;
                         move.type = En_Passant;
-                        pawn_path_handle_push_move(moves, move, ignore_turns);
+                        moves_counter += pawn_path_handle_push_move(moves, move, ignore_turns);
                         move.to_c = orig;
                         move.type = Normal;
                     }
                 }
             }
         }
+        return moves_counter;
     }
     
-    void pawn_path_handle_push_move(std::forward_list<Move>& moves, Move& move, bool ignore_turns = false) {
+    int pawn_path_handle_push_move(std::forward_list<Move>& moves, Move& move, bool ignore_turns = false) {
         if (!does_pass_basic_piece_checks(move, ignore_turns)) {
-            return;
+            return 0;
         }
         
         int opposite_side_value;
@@ -1075,24 +1121,30 @@ public:
             move.type = Promote_to_Knight;
             moves.push_front(move);
             move.type = Normal;
+            return 4;
         }
         else {
             moves.push_front(move);
+            return 1;
         }
+        return 0;
     }
     
-    void reg_piece_handle_push_move(std::forward_list<Move>& moves, Move& move, bool ignore_turns = false) {
+    int reg_piece_handle_push_move(std::forward_list<Move>& moves, Move& move, bool ignore_turns = false) {
         if (!does_pass_basic_piece_checks(move, ignore_turns)) {
-            return;
+            return 0;
         }
         else {
             moves.push_front(move);
+            return 1;
         }
     }
     
-    void generate_king_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    int generate_king_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        int moves_counter = 0;
+        
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
-            return;
+            return 0;
         }
         
         Cords orig = Cords {x, y};
@@ -1110,7 +1162,7 @@ public:
                 }
                 else if (!is_square_under_attack(x + j, y + i, !current_turn)){
                     move.to_c = Cords{x + j, y + i};
-                    reg_piece_handle_push_move(moves, move);
+                    moves_counter += reg_piece_handle_push_move(moves, move);
                     move.to_c = orig;
                 }
             }
@@ -1123,20 +1175,24 @@ public:
         if (can_castle_queenside && squares[home_side_value][3].piece == Empty && squares[home_side_value][2].piece == Empty && squares[home_side_value][1].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn) && !is_square_under_attack(3, home_side_value, !current_turn) && !is_square_under_attack(2, home_side_value, !current_turn)) {
             move.to_c.x -= 2;
             move.type = Castle_Queenside;
-            reg_piece_handle_push_move(moves, move);
+            moves_counter += reg_piece_handle_push_move(moves, move);
             move.to_c = orig;
             move.type = Normal;
         }
         if (can_castle_kingside && squares[home_side_value][5].piece == Empty && squares[home_side_value][6].piece == Empty && !is_square_under_attack(move.from_c.x, move.from_c.y, !current_turn) && !is_square_under_attack(5, home_side_value, !current_turn) && !is_square_under_attack(6, home_side_value, !current_turn)) {
             move.to_c.x += 2;
             move.type = Castle_Kingside;
-            reg_piece_handle_push_move(moves, move);
+            moves_counter += reg_piece_handle_push_move(moves, move);
             move.to_c = orig;
             move.type = Normal;
         }
+        
+        return moves_counter;
     }
     
-    void generate_knight_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    int generate_knight_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        int moves_counter = 0;
+        
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
             return;
         }
@@ -1148,33 +1204,37 @@ public:
             for (int j = -1; j < 2; j += 2) {
                 move.to_c.x += 1 * j;
                 move.to_c.y += 2 * i;
-                reg_piece_handle_push_move(moves, move);
+                moves_counter += reg_piece_handle_push_move(moves, move);
                 move.to_c = orig;
                 
                 move.to_c.x += 2 * j;
                 move.to_c.y += 1 * i;
-                reg_piece_handle_push_move(moves, move);
+                moves_counter += reg_piece_handle_push_move(moves, move);
                 move.to_c = orig;
             }
         }
-        
+        return moves_counter;
     }
     
-    void generate_slider_moves(Cords* increments, Move& move, std::forward_list<Move>& moves, int size, int x, int y) {
+    int generate_slider_moves(Cords* increments, Move& move, std::forward_list<Move>& moves, int size, int x, int y) {
+        int moves_counter = 0;
         for (int i = 0; i < size; i++) {
             move.to_c = sliding_pieces_incrementer(x, y, (increments + i)->x, (increments + i)->y);
             int temp = std::max(abs(move.to_c.x - x), abs(move.to_c.y - y));
             for (int j = 0; j < temp; j++) {
-                reg_piece_handle_push_move(moves, move);
+                moves_counter += reg_piece_handle_push_move(moves, move);
                 move.to_c.x -= (increments + i)->x;
                 move.to_c.y -= (increments + i)->y;
             }
         }
+        return moves_counter;
     }
     
-    void generate_bishop_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    int generate_bishop_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        int moves_counter = 0;
+        
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
-            return;
+            return 0;
         }
         
         Cords orig = Cords {x, y};
@@ -1183,12 +1243,15 @@ public:
         const int size = 4;
         Cords increments[size] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}};
         
-        generate_slider_moves(increments, move, moves, size, x, y);
+        moves_counter += generate_slider_moves(increments, move, moves, size, x, y);
+        return moves_counter;
     }
     
-    void generate_rook_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    int generate_rook_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        int moves_counter = 0;
+        
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
-            return;
+            return 0;
         }
         
         Cords orig = Cords {x, y};
@@ -1197,12 +1260,15 @@ public:
         const int size = 4;
         Cords increments[size] = {Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
         
-        generate_slider_moves(increments, move, moves, size, x, y);
+        moves_counter += generate_slider_moves(increments, move, moves, size, x, y);
+        return moves_counter;
     }
     
-    void generate_queen_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    int generate_queen_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+        int moves_counter = 0;
+        
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
-            return;
+            return 0;
         }
         
         Cords orig = Cords {x, y};
@@ -1211,7 +1277,8 @@ public:
         const int size = 8;
         Cords increments[size] = {Cords{-1, -1}, Cords{1, -1}, Cords{1, 1}, Cords{-1, 1}, Cords{0, -1}, Cords{-1, 0}, Cords{0, 1}, Cords{1, 0}};
         
-        generate_slider_moves(increments, move, moves, size, x, y);
+        moves_counter += generate_slider_moves(increments, move, moves, size, x, y);
+        return moves_counter;
     }
     
     // TODO: Remove attacker_color maybe?
@@ -1554,7 +1621,7 @@ public:
     
     
     // Legal moves must be generated before game end evals are called
-    bool has_been_checkmated() {
+    bool has_been_checkmated(const std::forward_list<Move>& moves) {
         /*
         std::cout << '\n' << '\n' << '\n' << '\n';
         for (auto it = legal_moves.begin(); it != legal_moves.end(); ++it) {
@@ -1562,12 +1629,12 @@ public:
         }
          */
         Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
-        return legal_moves.empty() && is_square_under_attack(king_c.x, king_c.y, !current_turn);
+        return moves.empty() && is_square_under_attack(king_c.x, king_c.y, !current_turn);
     }
     
-    bool is_draw() {
+    bool is_draw(const std::forward_list<Move>& moves) {
         Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
-        if (legal_moves.empty() && !is_square_under_attack(king_c.x, king_c.y, !current_turn)) {
+        if (moves.empty() && !is_square_under_attack(king_c.x, king_c.y, !current_turn)) {
             return true;
         }
         else if (previous_board_positions[remove_FEN_counters(generate_FEN())] == 2) {
@@ -1959,25 +2026,19 @@ public:
     
     long Perft(int depth /* assuming >= 1 */) {
         long nodes = 0;
+        int n_moves = 0;
 
         std::forward_list<Move> moves;
-        generate_moves(moves);
+        n_moves = generate_moves(moves);
         
         if (depth == 0) {
             return 1;
         }
         
         if (depth == 1) {
-            int counter = 0;
-//            std::cout << "\n\nInner:\n";
-            for (auto it = moves.begin(); it != moves.end(); ++it) {
-//                print_move(*it, true);
-//                std::cout << '\n';
-                counter++;
-            }
-            return counter;
+            return n_moves;
         }
-        
+
         for (auto it = moves.begin(); it != moves.end(); ++it) {
             process_move(*it);
             nodes += Perft(depth - 1);
@@ -1985,6 +2046,56 @@ public:
         }
         return nodes;
     }
+    
+    int static_eval() {
+        int eval = 0;
+        
+        eval += white_piece_values - black_piece_values;
+        
+        return eval;
+    }
+    
+    int minimax(int depth, int maximizingPlayer) {
+        std::forward_list<Move> moves;
+        generate_moves(moves);
+        
+        
+        if (has_been_checkmated(moves)) {
+            return current_turn == 1 ? 2000000 : -2000000;
+        }
+        else if (is_draw(moves)) {
+            return 0;
+        }
+        else if (depth == 0) {
+            return static_eval();
+        }
+        
+        
+        if (maximizingPlayer) {
+            int maxEval = -2000000;
+            
+            for (auto it = moves.begin(); it != moves.end(); ++it) {
+                process_move(*it);
+                int eval = minimax(depth - 1, 0);
+                maxEval = std::max(maxEval, eval);
+                undo_last_move();
+            }
+            return maxEval;
+        }
+        if (maximizingPlayer) {
+            int minEval = 2000000;
+            
+            for (auto it = moves.begin(); it != moves.end(); ++it) {
+                process_move(*it);
+                int eval = minimax(depth - 1, 1);
+                minEval = std::min(minEval, eval);
+                undo_last_move();
+            }
+            return minEval;
+        }
+    }
+    
+    Move best_move();
     
     Move request_move(Move move){
         // This functions takes in a move requested by the board, and returns the correct type of it is,
@@ -2222,7 +2333,7 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0");
+    Board board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10 ");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
     
@@ -2248,7 +2359,7 @@ int main() {
      */
 
     
-    std::cout << board.Perft(6) << std::endl;
+    std::cout << board.Perft(5) << std::endl;
 //    std::cout<<counter;
 
     clock_t end = clock();
