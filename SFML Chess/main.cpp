@@ -1,9 +1,10 @@
 #include <SFML/Graphics.hpp>
 #include <iostream>
-#include <ctime>
+#include <chrono>
 #include <string>
 #include <ctype.h>
 #include <forward_list>
+#include <vector>
 #include <sparsehash/dense_hash_map>
 
 #include "ResourcePath.hpp"
@@ -25,6 +26,7 @@
 sf::Texture textures[13];
 std::forward_list<sf::Sprite> sprites, promotion_sprites_white, promotion_sprites_black;
 int incre8[8];
+double s_timer;
 
 struct Cords {
     int x: 8;
@@ -929,8 +931,8 @@ public:
         return true;
     }
     
-    bool does_pass_basic_piece_checks(Move move, bool ignore_turns = false) {
-        if (!(is_correct_turn(move.from_c.x, move.from_c.y)) && !ignore_turns) {
+    bool does_pass_basic_piece_checks(Move move) {
+        if (!(is_correct_turn(move.from_c.x, move.from_c.y))) {
             return false;
         }
         else if (!(is_within_bounds(move.to_c.x, move.to_c.y))) {
@@ -940,7 +942,7 @@ public:
         else if (move.from_c.x == move.to_c.x && move.from_c.y == move.to_c.y){
             return false;
         }
-        else if (is_friendly_piece(move.to_c.x, move.to_c.y) && !ignore_turns){
+        else if (is_friendly_piece(move.to_c.x, move.to_c.y)){
             return false;
         }
         else if (!follows_pin_rules(move)) {
@@ -961,7 +963,7 @@ public:
         attacks_on_the_king = under_attack_cords(king_c.x, king_c.y, !current_turn);
     }
     
-    int generate_moves(std::forward_list<Move>& moves, bool ignore_turns = false) {
+    int generate_moves(std::vector<Move>& moves) {
         int moves_counter = 0;
         moves.clear();
         reset_attacks_on_the_king();
@@ -976,22 +978,22 @@ public:
                         case Empty:
                             break;
                         case Pawn:
-                            moves_counter += generate_pawn_moves(moves, x, y, ignore_turns);
+                            moves_counter += generate_pawn_moves(moves, x, y);
                             break;
                         case Knight:
-                            moves_counter += generate_knight_moves(moves, x, y, ignore_turns);
+                            moves_counter += generate_knight_moves(moves, x, y);
                             break;
                         case Bishop:
-                            moves_counter += generate_bishop_moves(moves, x, y, ignore_turns);
+                            moves_counter += generate_bishop_moves(moves, x, y);
                             break;
                         case Rook:
-                            moves_counter += generate_rook_moves(moves, x, y, ignore_turns);
+                            moves_counter += generate_rook_moves(moves, x, y);
                             break;
                         case Queen:
-                            moves_counter += generate_queen_moves(moves, x, y, ignore_turns);
+                            moves_counter += generate_queen_moves(moves, x, y);
                             break;
                         case King:
-                            moves_counter += generate_king_moves(moves, x, y, ignore_turns);
+                            moves_counter += generate_king_moves(moves, x, y);
                             break;
                         default:
                             std::cout << "Should not have been reached at generate_moves." << std::endl;
@@ -1039,7 +1041,7 @@ public:
         return false;
     }
     
-    int generate_pawn_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    int generate_pawn_moves(std::vector<Move>& moves, int x, int y, bool ignore_turns = false) {
         int moves_counter = 0;
         
         int direction_value, pawn_start_y, opposite_side_value;
@@ -1107,8 +1109,8 @@ public:
         return moves_counter;
     }
     
-    int pawn_path_handle_push_move(std::forward_list<Move>& moves, Move& move, bool ignore_turns = false) {
-        if (!does_pass_basic_piece_checks(move, ignore_turns)) {
+    int pawn_path_handle_push_move(std::vector<Move>& moves, Move& move, bool ignore_turns = false) {
+        if (!does_pass_basic_piece_checks(move)) {
             return 0;
         }
         
@@ -1121,34 +1123,34 @@ public:
         }
         if (move.to_c.y == opposite_side_value) {
             move.type = Promote_to_Queen;
-            moves.push_front(move);
+            moves.push_back(move);
             move.type = Promote_to_Rook;
-            moves.push_front(move);
+            moves.push_back(move);
             move.type = Promote_to_Bishop;
-            moves.push_front(move);
+            moves.push_back(move);
             move.type = Promote_to_Knight;
-            moves.push_front(move);
+            moves.push_back(move);
             move.type = Normal;
             return 4;
         }
         else {
-            moves.push_front(move);
+            moves.push_back(move);
             return 1;
         }
         return 0;
     }
     
-    int reg_piece_handle_push_move(std::forward_list<Move>& moves, Move& move, bool ignore_turns = false) {
-        if (!does_pass_basic_piece_checks(move, ignore_turns)) {
+    int reg_piece_handle_push_move(std::vector<Move>& moves, Move& move) {
+        if (!does_pass_basic_piece_checks(move)) {
             return 0;
         }
         else {
-            moves.push_front(move);
+            moves.push_back(move);
             return 1;
         }
     }
     
-    int generate_king_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    int generate_king_moves(std::vector<Move>& moves, int x, int y, bool ignore_turns = false) {
         int moves_counter = 0;
         
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
@@ -1198,7 +1200,7 @@ public:
         return moves_counter;
     }
     
-    int generate_knight_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    int generate_knight_moves(std::vector<Move>& moves, int x, int y, bool ignore_turns = false) {
         int moves_counter = 0;
         
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
@@ -1224,7 +1226,7 @@ public:
         return moves_counter;
     }
     
-    int generate_slider_moves(Cords* increments, Move& move, std::forward_list<Move>& moves, int size, int x, int y) {
+    int generate_slider_moves(Cords* increments, Move& move, std::vector<Move>& moves, int size, int x, int y) {
         int moves_counter = 0;
         for (int i = 0; i < size; i++) {
             move.to_c = sliding_pieces_incrementer(x, y, (increments + i)->x, (increments + i)->y);
@@ -1238,7 +1240,7 @@ public:
         return moves_counter;
     }
     
-    int generate_bishop_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    int generate_bishop_moves(std::vector<Move>& moves, int x, int y, bool ignore_turns = false) {
         int moves_counter = 0;
         
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
@@ -1255,7 +1257,7 @@ public:
         return moves_counter;
     }
     
-    int generate_rook_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    int generate_rook_moves(std::vector<Move>& moves, int x, int y, bool ignore_turns = false) {
         int moves_counter = 0;
         
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
@@ -1272,7 +1274,7 @@ public:
         return moves_counter;
     }
     
-    int generate_queen_moves(std::forward_list<Move>& moves, int x, int y, bool ignore_turns = false) {
+    int generate_queen_moves(std::vector<Move>& moves, int x, int y, bool ignore_turns = false) {
         int moves_counter = 0;
         
         if (!(is_correct_turn(x, y)) && !ignore_turns) {
@@ -1647,7 +1649,7 @@ public:
     }
     
     // Legal moves must be generated before game end evals are called
-    bool has_been_checkmated(const std::forward_list<Move>& moves) {
+    bool has_been_checkmated(const std::vector<Move>& moves) {
         /*
         std::cout << '\n' << '\n' << '\n' << '\n';
         for (auto it = legal_moves.begin(); it != legal_moves.end(); ++it) {
@@ -1658,7 +1660,7 @@ public:
         return moves.empty() && is_square_under_attack(king_c.x, king_c.y, !current_turn);
     }
     
-    bool is_draw(const std::forward_list<Move>& moves) {
+    bool is_draw(const std::vector<Move>& moves) {
         Cords king_c = current_turn == 1 ? black_king_loc : white_king_loc;
         if (moves.empty() && !is_square_under_attack(king_c.x, king_c.y, !current_turn)) {
             return true;
@@ -2083,7 +2085,8 @@ public:
         long nodes = 0;
         int n_moves = 0;
 
-        std::forward_list<Move> moves;
+        std::vector<Move> moves;
+        moves.reserve(256);
         n_moves = generate_moves(moves);
         
         if (depth == 0) {
@@ -2104,7 +2107,7 @@ public:
         return nodes;
     }
     
-    void sort_moves(std::forward_list<Move>& moves) {
+    void sort_moves(std::vector<Move>& moves) {
         int score;
         
         // Score all the moves
@@ -2123,7 +2126,7 @@ public:
             it->score = score;
         }
         
-        moves.sort(move_cmp);
+        sort(moves.begin(), moves.end(), move_cmp);
     }
     
     
@@ -2138,9 +2141,15 @@ public:
     }
     
     int negamax(int depth, int alpha, int beta) {
-        std::forward_list<Move> moves;
+        auto t1 = std::chrono::high_resolution_clock::now();
+        std::vector<Move> moves;
+        moves.reserve(256);
         generate_moves(moves);
         sort_moves(moves);
+        auto t2 = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double, std::milli> ms_double = t2 - t1;
+        s_timer += ms_double.count();
+        
         
         
         if (has_been_checkmated(moves)) {
@@ -2170,7 +2179,8 @@ public:
     }
     
     Move find_best_move(int depth) {
-        std::forward_list<Move> moves;
+        std::vector<Move> moves;
+        moves.reserve(256);
         generate_moves(moves);
         
         Move best_move;
@@ -2383,6 +2393,7 @@ int main() {
     for (int i = 0; i < 8; i++) {
         incre8[i] = 1;
     }
+    s_timer = 0;
     
     
     
@@ -2428,13 +2439,14 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("r3k2r/p1ppqpb1/Bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPB1PPP/R3K2R b KQkq - 0 0");
+    Board board("3q2r1/p2b1k2/1pnBp1N1/3p1pQP/6P1/5R2/2r2P2/4RK2 w - - 1 0");
 
-    std::forward_list<Move> moves;
+    std::vector<Move> moves;
+    moves.reserve(256);
     board.generate_moves(moves);
     
     
-    clock_t begin = clock();
+    auto t1 = std::chrono::high_resolution_clock::now();
     /*
     int counter = 0;
     for (auto it = moves.begin(); it != moves.end(); ++it) {
@@ -2454,10 +2466,11 @@ int main() {
     board.print_move(board.find_best_move(4), true);
     std::cout << '\n';
 
-    clock_t end = clock();
-    double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
+    auto t2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> ms_double = t2 - t1;
     
-    std::cout << "Time: " << elapsed_secs << "s\n";
+    std::cout << "Time: " << ms_double.count() << "ms\n";
+    std::cout << "s_timer: " << s_timer << "ms\n";
     
     board.clear_attacks_on_king();
     board.set_texture_to_pieces();
