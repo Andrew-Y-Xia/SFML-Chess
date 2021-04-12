@@ -299,25 +299,26 @@ public:
         int temp;
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
+                temp = 0;
                 
                 switch (squares[y][x].piece) {
                     case Empty:
                     case King:
                         break;
                     case Pawn:
-                        temp += 10;
+                        temp = 10;
                         break;
                     case Knight:
-                        temp += 30;
+                        temp = 30;
                         break;
                     case Bishop:
-                        temp += 33;
+                        temp = 33;
                         break;
                     case Rook:
-                        temp += 50;
+                        temp = 50;
                         break;
                     case Queen:
-                        temp += 90;
+                        temp = 90;
                         break;
                 }
                 if (squares[y][x].color == 1) {
@@ -999,7 +1000,7 @@ public:
 
         Cords ignore_squares[2] = {Cords{x, y}, Cords{en_passant_cords.x, y}};
         Cords c = ignore_square_incrementer(king_c.x, king_c.y, incr_x, incr_y, ignore_squares);
-        if (c.x == x && c.y == y) {
+        if (king_c.x == x && king_c.y == y) {
             std::cout << "Shouldn't occur calculate_en_passant_pins";
         }
         if (squares[c.y][c.x].color != current_turn) {
@@ -1620,6 +1621,24 @@ public:
     }
     
     
+    void add_to_enemy_piece_values(int i) {
+        if (current_turn) {
+            white_piece_values += i;
+        }
+        else {
+            black_piece_values += i;
+        }
+    }
+    
+    void add_to_home_piece_values(int i) {
+        if (current_turn) {
+            black_piece_values += i;
+        }
+        else {
+            white_piece_values += i;
+        }
+    }
+    
     // Legal moves must be generated before game end evals are called
     bool has_been_checkmated(const std::forward_list<Move>& moves) {
         /*
@@ -1668,15 +1687,19 @@ public:
         switch (move.type) {
             case Promote_to_Queen:
                 squares[move.to_c.y][move.to_c.x].piece = Queen;
+                add_to_home_piece_values(80);
                 break;
             case Promote_to_Rook:
                 squares[move.to_c.y][move.to_c.x].piece = Rook;
+                add_to_home_piece_values(40);
                 break;
             case Promote_to_Bishop:
                 squares[move.to_c.y][move.to_c.x].piece = Bishop;
+                add_to_home_piece_values(23);
                 break;
             case Promote_to_Knight:
                 squares[move.to_c.y][move.to_c.x].piece = Knight;
+                add_to_home_piece_values(20);
                 break;
             case Castle_Queenside:
                 squares[castle_side_value][3] = squares[castle_side_value][0];
@@ -1690,12 +1713,13 @@ public:
                 break;
             case En_Passant:
                 squares[en_passant_side_value][move.to_c.x].piece = Empty;
+                add_to_enemy_piece_values(-10);
                 break;
             case Normal:
                 break;
             case Illegal:
             default:
-                std::cout << "This should not have been reached (process_move).";
+                std::cout << "This should not have been reached (process_board_changes).";
                 break;
         }
     }
@@ -1739,6 +1763,32 @@ public:
         move_data.black_can_castle_queenside = black_can_castle_queenside;
         
         move_stack.push_front(move_data);
+        
+        
+
+        // If square was captured, change the enemy piece values accordingly
+        switch (squares[move.to_c.y][move.to_c.x].piece) {
+            case Empty:
+                break;
+            case Pawn:
+                add_to_enemy_piece_values(-10);
+                break;
+            case Knight:
+                add_to_enemy_piece_values(-30);
+                break;
+            case Bishop:
+                add_to_enemy_piece_values(-33);
+                break;
+            case Rook:
+                add_to_enemy_piece_values(-50);
+                break;
+            case Queen:
+                add_to_enemy_piece_values(-90);
+                break;
+            case King:
+                std::cout << "Should not have been reached process_move.";
+                break;
+        }
         
         
         // Add the current board position for 3-move repition check
@@ -1962,6 +2012,30 @@ public:
         squares[move_data.move.to_c.y][move_data.move.to_c.x].piece = move_data.captured_piece;
         squares[move_data.move.to_c.y][move_data.move.to_c.x].color = !current_turn;
         
+        // Take the captured piece, and add its value back to enemy piece_values
+        switch (move_data.captured_piece) {
+            case Empty:
+                break;
+            case Pawn:
+                add_to_enemy_piece_values(10);
+                break;
+            case Knight:
+                add_to_enemy_piece_values(30);
+                break;
+            case Bishop:
+                add_to_enemy_piece_values(33);
+                break;
+            case Rook:
+                add_to_enemy_piece_values(50);
+                break;
+            case Queen:
+                add_to_enemy_piece_values(90);
+                break;
+            case King:
+                std::cout << "Should not have been reached undo_last_move.";
+                break;
+        }
+        
         // set some values for side-specific move patterns
         int castle_side_value, en_passant_side_value;
         if (current_turn == 1) {
@@ -1977,9 +2051,20 @@ public:
         // Handle promotions, castling, en_passant
         switch (move_data.move.type) {
             case Promote_to_Queen:
+                // return the piece_values back to what they were before promotion
+                add_to_home_piece_values(-80);
+                squares[move_data.move.from_c.y][move_data.move.from_c.x].piece = Pawn;
+                break;
             case Promote_to_Rook:
+                add_to_home_piece_values(-40);
+                squares[move_data.move.from_c.y][move_data.move.from_c.x].piece = Pawn;
+                break;
             case Promote_to_Bishop:
+                add_to_home_piece_values(-23);
+                squares[move_data.move.from_c.y][move_data.move.from_c.x].piece = Pawn;
+                break;
             case Promote_to_Knight:
+                add_to_home_piece_values(-20);
                 squares[move_data.move.from_c.y][move_data.move.from_c.x].piece = Pawn;
                 break;
             case Castle_Queenside:
@@ -1995,6 +2080,7 @@ public:
             case En_Passant:
                 squares[en_passant_side_value][move_data.move.to_c.x].piece = Pawn;
                 squares[en_passant_side_value][move_data.move.to_c.x].color = !current_turn;
+                add_to_enemy_piece_values(10);
                 break;
             case Normal:
                 break;
@@ -2035,9 +2121,11 @@ public:
             return 1;
         }
         
+        /*
         if (depth == 1) {
             return n_moves;
         }
+         */
 
         for (auto it = moves.begin(); it != moves.end(); ++it) {
             process_move(*it);
@@ -2047,55 +2135,66 @@ public:
         return nodes;
     }
     
-    int static_eval() {
+    int static_eval(std::forward_list<Move> moves) {
         int eval = 0;
         
         eval += white_piece_values - black_piece_values;
         
+        
+        eval *= current_turn ? -1 : 1;
         return eval;
     }
     
-    int minimax(int depth, int maximizingPlayer) {
+    int negamax(int depth, int alpha, int beta) {
         std::forward_list<Move> moves;
         generate_moves(moves);
         
         
         if (has_been_checkmated(moves)) {
-            return current_turn == 1 ? 2000000 : -2000000;
+            return current_turn == 0 ? 2000000 : -2000000;
         }
         else if (is_draw(moves)) {
             return 0;
         }
         else if (depth == 0) {
-            return static_eval();
+            return static_eval(moves);
         }
         
         
-        if (maximizingPlayer) {
-            int maxEval = -2000000;
-            
-            for (auto it = moves.begin(); it != moves.end(); ++it) {
-                process_move(*it);
-                int eval = minimax(depth - 1, 0);
-                maxEval = std::max(maxEval, eval);
-                undo_last_move();
+
+
+        for (auto it = moves.begin(); it != moves.end(); ++it) {
+            process_move(*it);
+            int eval = -negamax(depth - 1, -beta, -alpha);
+            undo_last_move();
+            if (eval > beta) {
+                return beta;
             }
-            return maxEval;
+            alpha = std::max(alpha, eval);
         }
-        if (maximizingPlayer) {
-            int minEval = 2000000;
-            
-            for (auto it = moves.begin(); it != moves.end(); ++it) {
-                process_move(*it);
-                int eval = minimax(depth - 1, 1);
-                minEval = std::min(minEval, eval);
-                undo_last_move();
-            }
-            return minEval;
-        }
+        
+        return alpha;
     }
     
-    Move best_move();
+    Move find_best_move(int depth) {
+        std::forward_list<Move> moves;
+        generate_moves(moves);
+        
+        Move best_move;
+        int maxEval = -2000000;
+        
+        for (auto it = moves.begin(); it != moves.end(); ++it) {
+            process_move(*it);
+            int eval = -negamax(depth - 1, -2000000, 2000000);
+            if (eval > maxEval) {
+                maxEval = eval;
+                best_move = *it;
+            }
+            undo_last_move();
+        }
+        
+        return best_move;
+    }
     
     Move request_move(Move move){
         // This functions takes in a move requested by the board, and returns the correct type of it is,
@@ -2333,7 +2432,7 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10 ");
+    Board board("rn2kb1r/pp3ppp/4p1qn/1p4B1/2B5/3P2QP/PPP2PP1/R3K2R w - - 1 0");
 //    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
 //    std::cout << sizeof(board);
     
@@ -2359,8 +2458,10 @@ int main() {
      */
 
     
-    std::cout << board.Perft(5) << std::endl;
+//    std::cout << board.Perft(3) << std::endl;
 //    std::cout<<counter;
+    board.print_move(board.find_best_move(3), true);
+    std::cout << '\n';
 
     clock_t end = clock();
     double elapsed_secs = double(end - begin) / CLOCKS_PER_SEC;
