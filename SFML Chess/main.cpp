@@ -14,6 +14,12 @@
 #define OFFSET 2
 #define ASDF std::cout << "asdf" << std::endl
 
+#define PAWN_VALUE 10
+#define KNIGHT_VALUE 30
+#define BISHOP_VALUE 33
+#define ROOK_VALUE 50
+#define QUEEN_VALUE 90
+
 
 // Global vars:
 sf::Texture textures[13];
@@ -108,8 +114,14 @@ struct Move {
     Cords from_c;
     Cords to_c;
     
-    move_type type;
+    move_type type: 4;
+    int score: 8;
 };
+
+
+bool move_cmp(Move first, Move second) {
+    return first.score > second.score;
+}
 
 
 struct Move_data {
@@ -291,41 +303,36 @@ public:
         return current_turn;
     }
     
+    int piece_to_value(piece_type piece) {
+        switch (piece) {
+            case Empty:
+            case King:
+                return 0;
+            case Pawn:
+                return PAWN_VALUE;
+            case Knight:
+                return KNIGHT_VALUE;
+            case Bishop:
+                return BISHOP_VALUE;
+            case Rook:
+                return ROOK_VALUE;
+            case Queen:
+                return QUEEN_VALUE;
+        }
+    }
+    
     void reset_piece_values() {
         white_piece_values = 0;
         black_piece_values = 0;
         
         
-        int temp;
         for (int y = 0; y < 8; y++) {
             for (int x = 0; x < 8; x++) {
-                temp = 0;
-                
-                switch (squares[y][x].piece) {
-                    case Empty:
-                    case King:
-                        break;
-                    case Pawn:
-                        temp = 10;
-                        break;
-                    case Knight:
-                        temp = 30;
-                        break;
-                    case Bishop:
-                        temp = 33;
-                        break;
-                    case Rook:
-                        temp = 50;
-                        break;
-                    case Queen:
-                        temp = 90;
-                        break;
-                }
                 if (squares[y][x].color == 1) {
-                    black_piece_values += temp;
+                    black_piece_values += piece_to_value(squares[y][x].piece);
                 }
                 else {
-                    white_piece_values += temp;
+                    white_piece_values += piece_to_value(squares[y][x].piece);
                 }
             }
         }
@@ -1687,19 +1694,19 @@ public:
         switch (move.type) {
             case Promote_to_Queen:
                 squares[move.to_c.y][move.to_c.x].piece = Queen;
-                add_to_home_piece_values(80);
+                add_to_home_piece_values(QUEEN_VALUE - PAWN_VALUE);
                 break;
             case Promote_to_Rook:
                 squares[move.to_c.y][move.to_c.x].piece = Rook;
-                add_to_home_piece_values(40);
+                add_to_home_piece_values(ROOK_VALUE - PAWN_VALUE);
                 break;
             case Promote_to_Bishop:
                 squares[move.to_c.y][move.to_c.x].piece = Bishop;
-                add_to_home_piece_values(23);
+                add_to_home_piece_values(BISHOP_VALUE - PAWN_VALUE);
                 break;
             case Promote_to_Knight:
                 squares[move.to_c.y][move.to_c.x].piece = Knight;
-                add_to_home_piece_values(20);
+                add_to_home_piece_values(KNIGHT_VALUE - PAWN_VALUE);
                 break;
             case Castle_Queenside:
                 squares[castle_side_value][3] = squares[castle_side_value][0];
@@ -1713,7 +1720,7 @@ public:
                 break;
             case En_Passant:
                 squares[en_passant_side_value][move.to_c.x].piece = Empty;
-                add_to_enemy_piece_values(-10);
+                add_to_enemy_piece_values(-PAWN_VALUE);
                 break;
             case Normal:
                 break;
@@ -1767,28 +1774,7 @@ public:
         
 
         // If square was captured, change the enemy piece values accordingly
-        switch (squares[move.to_c.y][move.to_c.x].piece) {
-            case Empty:
-                break;
-            case Pawn:
-                add_to_enemy_piece_values(-10);
-                break;
-            case Knight:
-                add_to_enemy_piece_values(-30);
-                break;
-            case Bishop:
-                add_to_enemy_piece_values(-33);
-                break;
-            case Rook:
-                add_to_enemy_piece_values(-50);
-                break;
-            case Queen:
-                add_to_enemy_piece_values(-90);
-                break;
-            case King:
-                std::cout << "Should not have been reached process_move.";
-                break;
-        }
+        add_to_enemy_piece_values(-piece_to_value(squares[move.to_c.y][move.to_c.x].piece));
         
         
         // Add the current board position for 3-move repition check
@@ -2013,28 +1999,7 @@ public:
         squares[move_data.move.to_c.y][move_data.move.to_c.x].color = !current_turn;
         
         // Take the captured piece, and add its value back to enemy piece_values
-        switch (move_data.captured_piece) {
-            case Empty:
-                break;
-            case Pawn:
-                add_to_enemy_piece_values(10);
-                break;
-            case Knight:
-                add_to_enemy_piece_values(30);
-                break;
-            case Bishop:
-                add_to_enemy_piece_values(33);
-                break;
-            case Rook:
-                add_to_enemy_piece_values(50);
-                break;
-            case Queen:
-                add_to_enemy_piece_values(90);
-                break;
-            case King:
-                std::cout << "Should not have been reached undo_last_move.";
-                break;
-        }
+        add_to_enemy_piece_values(piece_to_value(move_data.captured_piece));
         
         // set some values for side-specific move patterns
         int castle_side_value, en_passant_side_value;
@@ -2052,19 +2017,19 @@ public:
         switch (move_data.move.type) {
             case Promote_to_Queen:
                 // return the piece_values back to what they were before promotion
-                add_to_home_piece_values(-80);
+                add_to_home_piece_values(PAWN_VALUE - QUEEN_VALUE);
                 squares[move_data.move.from_c.y][move_data.move.from_c.x].piece = Pawn;
                 break;
             case Promote_to_Rook:
-                add_to_home_piece_values(-40);
+                add_to_home_piece_values(PAWN_VALUE - ROOK_VALUE);
                 squares[move_data.move.from_c.y][move_data.move.from_c.x].piece = Pawn;
                 break;
             case Promote_to_Bishop:
-                add_to_home_piece_values(-23);
+                add_to_home_piece_values(PAWN_VALUE - BISHOP_VALUE);
                 squares[move_data.move.from_c.y][move_data.move.from_c.x].piece = Pawn;
                 break;
             case Promote_to_Knight:
-                add_to_home_piece_values(-20);
+                add_to_home_piece_values(PAWN_VALUE - KNIGHT_VALUE);
                 squares[move_data.move.from_c.y][move_data.move.from_c.x].piece = Pawn;
                 break;
             case Castle_Queenside:
@@ -2080,7 +2045,7 @@ public:
             case En_Passant:
                 squares[en_passant_side_value][move_data.move.to_c.x].piece = Pawn;
                 squares[en_passant_side_value][move_data.move.to_c.x].color = !current_turn;
-                add_to_enemy_piece_values(10);
+                add_to_enemy_piece_values(PAWN_VALUE);
                 break;
             case Normal:
                 break;
@@ -2110,6 +2075,10 @@ public:
         move_stack.pop_front();
     }
     
+    void debug_piece_values() {
+        std::cout << "white_piece_values: " << white_piece_values << " | black_piece_values: " << black_piece_values << '\n';
+    }
+    
     long Perft(int depth /* assuming >= 1 */) {
         long nodes = 0;
         int n_moves = 0;
@@ -2135,7 +2104,30 @@ public:
         return nodes;
     }
     
-    int static_eval(std::forward_list<Move> moves) {
+    void sort_moves(std::forward_list<Move>& moves) {
+        int score;
+        
+        // Score all the moves
+        for (auto it = moves.begin(); it != moves.end(); ++it) {
+            score = 0;
+            if (squares[it->to_c.y][it->to_c.x].piece != Empty) {
+                score += 50;
+                score += piece_to_value(squares[it->to_c.y][it->to_c.x].piece) - piece_to_value(squares[it->from_c.y][it->from_c.x].piece);
+            }
+            if (it->type == Promote_to_Queen || it->type == Promote_to_Rook || it->type == Promote_to_Bishop || it->type == Promote_to_Knight) {
+                score += 100;
+            }
+            else if (it->type == Castle_Kingside || it->type == Castle_Queenside) {
+                score += 60;
+            }
+            it->score = score;
+        }
+        
+        moves.sort(move_cmp);
+    }
+    
+    
+    int static_eval(/*std::forward_list<Move>& moves*/) {
         int eval = 0;
         
         eval += white_piece_values - black_piece_values;
@@ -2148,6 +2140,7 @@ public:
     int negamax(int depth, int alpha, int beta) {
         std::forward_list<Move> moves;
         generate_moves(moves);
+        sort_moves(moves);
         
         
         if (has_been_checkmated(moves)) {
@@ -2157,7 +2150,7 @@ public:
             return 0;
         }
         else if (depth == 0) {
-            return static_eval(moves);
+            return static_eval();
         }
         
         
@@ -2391,6 +2384,9 @@ int main() {
         incre8[i] = 1;
     }
     
+    
+    
+    
     sf::Sprite* sprite_being_dragged;
     sprite_being_dragged = NULL;
     
@@ -2432,16 +2428,11 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("rn2kb1r/pp3ppp/4p1qn/1p4B1/2B5/3P2QP/PPP2PP1/R3K2R w - - 1 0");
-//    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
-//    std::cout << sizeof(board);
-    
+    Board board("r3k2r/p1ppqpb1/Bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPB1PPP/R3K2R b KQkq - 0 0");
+
     std::forward_list<Move> moves;
     board.generate_moves(moves);
     
-    
-//    Board board("8/8/8/8/8/k7/pK6/8 b KQkq - 0 1");
-//    std::cout << sizeof(board);
     
     clock_t begin = clock();
     /*
@@ -2460,7 +2451,7 @@ int main() {
     
 //    std::cout << board.Perft(3) << std::endl;
 //    std::cout<<counter;
-    board.print_move(board.find_best_move(3), true);
+    board.print_move(board.find_best_move(4), true);
     std::cout << '\n';
 
     clock_t end = clock();
