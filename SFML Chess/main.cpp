@@ -680,7 +680,7 @@ public:
                 return c;
             }
             else if (squares[c.y][c.x].piece != Empty) {
-                if (!(squares[c.y][c.x].piece == King && current_turn == squares[c.y][c.x].color && ignore_king)) {
+                if (!(ignore_king && squares[c.y][c.x].piece == King && current_turn == squares[c.y][c.x].color)) {
                     return c;
                 }
             }
@@ -1665,9 +1665,11 @@ public:
         if (moves.empty() && !is_square_under_attack(king_c.x, king_c.y, !current_turn)) {
             return true;
         }
+        /*
         else if (previous_board_positions[remove_FEN_counters(generate_FEN())] == 2) {
             return true;
         }
+         */
         else {
             return false;
         }
@@ -2114,7 +2116,7 @@ public:
         for (auto it = moves.begin(); it != moves.end(); ++it) {
             score = 0;
             if (squares[it->to_c.y][it->to_c.x].piece != Empty) {
-                score += 50;
+                score += 70;
                 score += piece_to_value(squares[it->to_c.y][it->to_c.x].piece) - piece_to_value(squares[it->from_c.y][it->from_c.x].piece);
             }
             if (it->type == Promote_to_Queen || it->type == Promote_to_Rook || it->type == Promote_to_Bishop || it->type == Promote_to_Knight) {
@@ -2169,7 +2171,7 @@ public:
             process_move(*it);
             int eval = -negamax(depth - 1, -beta, -alpha);
             undo_last_move();
-            if (eval > beta) {
+            if (eval >= beta) {
                 return beta;
             }
             alpha = std::max(alpha, eval);
@@ -2182,6 +2184,7 @@ public:
         std::vector<Move> moves;
         moves.reserve(256);
         generate_moves(moves);
+        sort_moves(moves);
         
         Move best_move;
         int maxEval = -2000000;
@@ -2439,7 +2442,7 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("3q2r1/p2b1k2/1pnBp1N1/3p1pQP/6P1/5R2/2r2P2/4RK2 w - - 1 0");
+    Board board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
 
     std::vector<Move> moves;
     moves.reserve(256);
@@ -2463,7 +2466,7 @@ int main() {
     
 //    std::cout << board.Perft(3) << std::endl;
 //    std::cout<<counter;
-    board.print_move(board.find_best_move(4), true);
+    board.print_move(board.find_best_move(6), true);
     std::cout << '\n';
 
     auto t2 = std::chrono::high_resolution_clock::now();
