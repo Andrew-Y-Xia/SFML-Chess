@@ -145,6 +145,11 @@ struct Square {
     unsigned int color: 1;
 };
 
+struct Piece {
+    int x: 4;
+    int y: 4;
+};
+
 
 // Math function: sign
 template <typename T> int sgn(T val) {
@@ -299,6 +304,9 @@ private:
     std::forward_list<Move_data> move_stack;
     
     int black_piece_values, white_piece_values;
+    
+    std::vector<Piece> white_pawns, white_knights, white_bishops, white_rooks, white_queens;
+    std::vector<Piece> black_pawns, black_knights, black_bishops, black_rooks, black_queens;
     
 public:
     Board() {
