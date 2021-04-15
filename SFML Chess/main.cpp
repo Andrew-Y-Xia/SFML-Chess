@@ -2216,7 +2216,7 @@ public:
         
         for (auto it = moves.begin(); it != moves.end(); ++it) {
             board.process_move(*it);
-            int eval = -board.negamax(depth - 1, -2000000, 2000000);
+            int eval = -board.negamax(depth - 1, -2000000, -maxEval);
             board.undo_last_move();
             
             if (eval > maxEval) {
@@ -2239,7 +2239,7 @@ public:
         board.sort_moves(moves);
 
         int i = 0;
-        ctpl::thread_pool p(6);
+        ctpl::thread_pool p(4);
         std::vector<std::future<int>> results(moves.size());
         for (auto it = moves.begin(); it != moves.end(); ++it) {
             board.process_move(*it);
@@ -2502,7 +2502,7 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("2br3k/pp3Pp1/1n2p3/1P2N1pr/2P2qP1/8/1BQ2P1P/4R1K1 w - - 1 0");
+    Board board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0");
 
     std::vector<Move> moves;
     moves.reserve(256);
@@ -2527,7 +2527,7 @@ int main() {
     
 //    std::cout << board.Perft(3) << std::endl;
 //    std::cout<<counter;
-    print_move(searcher.threaded_best_move(7), true);
+    print_move(searcher.find_best_move(6), true);
     std::cout << '\n';
 
     auto t2 = std::chrono::high_resolution_clock::now();
