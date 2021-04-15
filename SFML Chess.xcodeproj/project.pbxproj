@@ -24,6 +24,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A164B2C32627A3BB00160CF7 /* ctpl_stl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ctpl_stl.h; sourceTree = "<group>"; };
 		A1A1F5782602555600E15AA0 /* SFML Chess.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "SFML Chess.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A1A1F57C2602555600E15AA0 /* SFML Chess-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "SFML Chess-Info.plist"; path = "../SFML Chess-Info.plist"; sourceTree = "<group>"; };
 		A1A1F57D2602555600E15AA0 /* ResourcePath.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = ResourcePath.mm; sourceTree = "<group>"; };
@@ -78,6 +79,7 @@
 				A1A1F57D2602555600E15AA0 /* ResourcePath.mm */,
 				A1A1F57F2602555600E15AA0 /* ResourcePath.hpp */,
 				A1A1F5802602555600E15AA0 /* main.cpp */,
+				A164B2C32627A3BB00160CF7 /* ctpl_stl.h */,
 				A1A1F5822602555600E15AA0 /* Resources */,
 				A1A1F57B2602555600E15AA0 /* Supporting Files */,
 			);

@@ -8,6 +8,7 @@
 #include <sparsehash/dense_hash_map>
 
 #include "ResourcePath.hpp"
+#include "ctpl_stl.h"
 
 
 #define WIDTH 1024
@@ -149,6 +150,52 @@ struct Square {
 template <typename T> int sgn(T val) {
     return (T(0) < val) - (val < T(0));
 }
+
+char num_to_char(int input) {
+    char c;
+    switch(input) {
+        case 0:
+            c = 'a';
+            break;
+        case 1:
+            c = 'b';
+            break;
+        case 2:
+            c = 'c';
+            break;
+        case 3:
+            c = 'd';
+            break;
+        case 4:
+            c = 'e';
+            break;
+        case 5:
+            c = 'f';
+            break;
+        case 6:
+            c = 'g';
+            break;
+        case 7:
+            c = 'h';
+            break;
+    }
+    return c;
+}
+
+
+void print_move(Move move, bool reg = false) {
+    if (!reg) {
+        std::cout << "From: " << move.from_c.x << ", " << move.from_c.y << " to: " << move.to_c.x << ", " << move.to_c.y << std::endl;
+    }
+    else {
+        std::cout << num_to_char(move.from_c.x) << 8 - move.from_c.y << num_to_char(move.to_c.x) << 8 - move.to_c.y;
+    }
+}
+
+void print_cords(Cords c) {
+    std::cout << "Cords{" << c.x << ", " << c.y << '}';
+}
+
 
 void set_single_texture(int color, piece_type piece, sf::Sprite& sprite) {
     int addon;
@@ -365,36 +412,6 @@ public:
         }
     }
     
-    char num_to_char(int input) {
-        char c;
-        switch(input) {
-            case 0:
-                c = 'a';
-                break;
-            case 1:
-                c = 'b';
-                break;
-            case 2:
-                c = 'c';
-                break;
-            case 3:
-                c = 'd';
-                break;
-            case 4:
-                c = 'e';
-                break;
-            case 5:
-                c = 'f';
-                break;
-            case 6:
-                c = 'g';
-                break;
-            case 7:
-                c = 'h';
-                break;
-        }
-        return c;
-    }
     
     std::string generate_FEN() {
         std::string str;
@@ -1616,19 +1633,6 @@ public:
         return true;
     }
     
-    void print_move(Move move, bool reg = false) {
-        if (!reg) {
-            std::cout << "From: " << move.from_c.x << ", " << move.from_c.y << " to: " << move.to_c.x << ", " << move.to_c.y << std::endl;
-        }
-        else {
-            std::cout << num_to_char(move.from_c.x) << 8 - move.from_c.y << num_to_char(move.to_c.x) << 8 - move.to_c.y;
-        }
-    }
-    
-    void print_cords(Cords c) {
-        std::cout << "Cords{" << c.x << ", " << c.y << '}';
-    }
-    
     
     void add_to_enemy_piece_values(int i) {
         if (current_turn) {
@@ -2143,19 +2147,19 @@ public:
     }
     
     int negamax(int depth, int alpha, int beta) {
-        auto t1 = std::chrono::high_resolution_clock::now();
+//        auto t1 = std::chrono::high_resolution_clock::now();
         std::vector<Move> moves;
         moves.reserve(256);
         generate_moves(moves);
         sort_moves(moves);
-        auto t2 = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double, std::milli> ms_double = t2 - t1;
-        s_timer += ms_double.count();
+//        auto t2 = std::chrono::high_resolution_clock::now();
+//        std::chrono::duration<double, std::milli> ms_double = t2 - t1;
+//        s_timer += ms_double.count();
         
         
         
         if (has_been_checkmated(moves)) {
-            return current_turn == 0 ? 2000000 : -2000000;
+            return get_current_turn() == 0 ? 2000000 : -2000000;
         }
         else if (is_draw(moves)) {
             return 0;
@@ -2165,8 +2169,6 @@ public:
         }
         
         
-
-
         for (auto it = moves.begin(); it != moves.end(); ++it) {
             process_move(*it);
             int eval = -negamax(depth - 1, -beta, -alpha);
@@ -2180,27 +2182,6 @@ public:
         return alpha;
     }
     
-    Move find_best_move(int depth) {
-        std::vector<Move> moves;
-        moves.reserve(256);
-        generate_moves(moves);
-        sort_moves(moves);
-        
-        Move best_move;
-        int maxEval = -2000000;
-        
-        for (auto it = moves.begin(); it != moves.end(); ++it) {
-            process_move(*it);
-            int eval = -negamax(depth - 1, -2000000, 2000000);
-            if (eval > maxEval) {
-                maxEval = eval;
-                best_move = *it;
-            }
-            undo_last_move();
-        }
-        
-        return best_move;
-    }
     
     Move request_move(Move move){
         // This functions takes in a move requested by the board, and returns the correct type of it is,
@@ -2212,6 +2193,85 @@ public:
         return validated_move;
     }
 };
+
+
+
+class Search {
+private:
+    Board board;
+public:
+    
+    Search(Board& b) {
+        board = b;
+    }
+    
+    Move find_best_move(int depth) {
+        std::vector<Move> moves;
+        moves.reserve(256);
+        board.generate_moves(moves);
+        board.sort_moves(moves);
+        
+        Move best_move;
+        int maxEval = -2000000;
+        
+        for (auto it = moves.begin(); it != moves.end(); ++it) {
+            board.process_move(*it);
+            int eval = -board.negamax(depth - 1, -2000000, 2000000);
+            board.undo_last_move();
+            
+            if (eval > maxEval) {
+                maxEval = eval;
+                best_move = *it;
+            }
+            if (eval >= 2000000) {
+                break;
+            }
+        }
+        
+        return best_move;
+    }
+    
+    
+    Move threaded_best_move(int depth) {
+        std::vector<Move> moves;
+        moves.reserve(256);
+        board.generate_moves(moves);
+        board.sort_moves(moves);
+
+        int i = 0;
+        ctpl::thread_pool p(6);
+        std::vector<std::future<int>> results(moves.size());
+        for (auto it = moves.begin(); it != moves.end(); ++it) {
+            board.process_move(*it);
+            Board copy(board);
+            results[i] = p.push(std::bind(&Board::negamax, copy, depth - 1, -2000000, 2000000));
+            board.undo_last_move();
+            i++;
+        }
+        
+        /*
+        for (i = 0; i < moves.size(); i++) {
+            results[i].wait();
+        }
+        */
+
+
+        Move best_move;
+        int maxEval = -2000000;
+        for (int i = 0; i < moves.size(); i++) {
+            int result = -results[i].get();
+            if (result > maxEval) {
+                maxEval = result;
+                best_move = moves[i];
+            }
+        }
+        
+        return best_move;
+    }
+    
+};
+
+
 
 
 
@@ -2442,12 +2502,13 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("r4rk1/1pp1qppp/p1np1n2/2b1p1B1/2B1P1b1/P1NP1N2/1PP1QPPP/R4RK1 w - - 0 10");
+    Board board("2br3k/pp3Pp1/1n2p3/1P2N1pr/2P2qP1/8/1BQ2P1P/4R1K1 w - - 1 0");
 
     std::vector<Move> moves;
     moves.reserve(256);
     board.generate_moves(moves);
     
+    Search searcher(board);
     
     auto t1 = std::chrono::high_resolution_clock::now();
     /*
@@ -2466,7 +2527,7 @@ int main() {
     
 //    std::cout << board.Perft(3) << std::endl;
 //    std::cout<<counter;
-    board.print_move(board.find_best_move(6), true);
+    print_move(searcher.threaded_best_move(7), true);
     std::cout << '\n';
 
     auto t2 = std::chrono::high_resolution_clock::now();
@@ -2474,7 +2535,7 @@ int main() {
     
     std::cout << "Time: " << ms_double.count() << "ms\n";
     std::cout << "s_timer: " << s_timer << "ms\n";
-    
+
     board.clear_attacks_on_king();
     board.set_texture_to_pieces();
     
