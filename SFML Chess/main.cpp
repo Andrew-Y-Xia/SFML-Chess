@@ -2165,6 +2165,7 @@ public:
             return 0;
         }
         else if (depth == 0) {
+//            return quiescence_search(alpha, beta);
             return static_eval();
         }
         
@@ -2179,6 +2180,44 @@ public:
             alpha = std::max(alpha, eval);
         }
         
+        return alpha;
+    }
+    
+    
+    int quiescence_search(int alpha, int beta) {
+        int stand_pat = static_eval();
+        if (stand_pat >= beta) {
+            return beta;
+        }
+        if (alpha < stand_pat) {
+            alpha = stand_pat;
+        }
+
+        
+        std::vector<Move> moves;
+        moves.reserve(256);
+        generate_moves(moves);
+        sort_moves(moves);
+        
+        if (has_been_checkmated(moves)) {
+            return get_current_turn() == 0 ? 2000000 : -2000000;
+        }
+        else if (is_draw(moves)) {
+            return 0;
+        }
+        
+        for (auto it = moves.begin(); it != moves.end(); ++it)  {
+            if (squares[it->to_c.y][it->to_c.x].piece != Empty) {
+                process_move(*it);
+                int score = -quiescence_search(-beta, -alpha);
+                undo_last_move();
+
+                if (score >= beta) {
+                    return beta;
+                }
+                alpha = std::max(alpha, score);
+            }
+        }
         return alpha;
     }
     
@@ -2502,7 +2541,7 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0");
+    Board board("r3k2r/p1ppqpb1/Bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPB1PPP/R3K2R b KQkq - 0 0");
 
     std::vector<Move> moves;
     moves.reserve(256);
