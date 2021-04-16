@@ -21,6 +21,10 @@
 		A1A1F5CE260277B600E15AA0 /* Chess_rlt60.png in Resources */ = {isa = PBXBuildFile; fileRef = A1A1F5C2260277B600E15AA0 /* Chess_rlt60.png */; };
 		A1A1F5CF260277B600E15AA0 /* Chess_plt60.png in Resources */ = {isa = PBXBuildFile; fileRef = A1A1F5C3260277B600E15AA0 /* Chess_plt60.png */; };
 		A1A1F5D0260277B600E15AA0 /* Chess_qdt60.png in Resources */ = {isa = PBXBuildFile; fileRef = A1A1F5C4260277B600E15AA0 /* Chess_qdt60.png */; };
+		CC8658082629BF2700FFB5D7 /* Search.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CC8658062629BF2700FFB5D7 /* Search.cpp */; };
+		CC86580C2629BF7D00FFB5D7 /* Board.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CC86580A2629BF7D00FFB5D7 /* Board.cpp */; };
+		CC8658102629BF8F00FFB5D7 /* Utility.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CC86580E2629BF8F00FFB5D7 /* Utility.cpp */; };
+		CC8658142629C00C00FFB5D7 /* Data_structs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = CC8658122629C00C00FFB5D7 /* Data_structs.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +47,15 @@
 		A1A1F5C2260277B600E15AA0 /* Chess_rlt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_rlt60.png; sourceTree = "<group>"; };
 		A1A1F5C3260277B600E15AA0 /* Chess_plt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_plt60.png; sourceTree = "<group>"; };
 		A1A1F5C4260277B600E15AA0 /* Chess_qdt60.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Chess_qdt60.png; sourceTree = "<group>"; };
+		CC8658062629BF2700FFB5D7 /* Search.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Search.cpp; sourceTree = "<group>"; };
+		CC8658072629BF2700FFB5D7 /* Search.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Search.hpp; sourceTree = "<group>"; };
+		CC86580A2629BF7D00FFB5D7 /* Board.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Board.cpp; sourceTree = "<group>"; };
+		CC86580B2629BF7D00FFB5D7 /* Board.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Board.hpp; sourceTree = "<group>"; };
+		CC86580E2629BF8F00FFB5D7 /* Utility.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Utility.cpp; sourceTree = "<group>"; };
+		CC86580F2629BF8F00FFB5D7 /* Utility.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Utility.hpp; sourceTree = "<group>"; };
+		CC8658122629C00C00FFB5D7 /* Data_structs.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = Data_structs.cpp; sourceTree = "<group>"; };
+		CC8658132629C00C00FFB5D7 /* Data_structs.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = Data_structs.hpp; sourceTree = "<group>"; };
+		CC8658182629D1C200FFB5D7 /* depend.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; path = depend.hpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,10 +89,7 @@
 			isa = PBXGroup;
 			children = (
 				A1A1F5942602584D00E15AA0 /* SFML Chess.entitlements */,
-				A1A1F57D2602555600E15AA0 /* ResourcePath.mm */,
-				A1A1F57F2602555600E15AA0 /* ResourcePath.hpp */,
-				A1A1F5802602555600E15AA0 /* main.cpp */,
-				A164B2C32627A3BB00160CF7 /* ctpl_stl.h */,
+				CC86581E2629EAC900FFB5D7 /* src */,
 				A1A1F5822602555600E15AA0 /* Resources */,
 				A1A1F57B2602555600E15AA0 /* Supporting Files */,
 			);
@@ -111,6 +121,26 @@
 				A1A1F5C2260277B600E15AA0 /* Chess_rlt60.png */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		CC86581E2629EAC900FFB5D7 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				A1A1F57D2602555600E15AA0 /* ResourcePath.mm */,
+				A1A1F57F2602555600E15AA0 /* ResourcePath.hpp */,
+				A1A1F5802602555600E15AA0 /* main.cpp */,
+				CC86580A2629BF7D00FFB5D7 /* Board.cpp */,
+				CC86580B2629BF7D00FFB5D7 /* Board.hpp */,
+				CC8658182629D1C200FFB5D7 /* depend.hpp */,
+				CC86580E2629BF8F00FFB5D7 /* Utility.cpp */,
+				CC86580F2629BF8F00FFB5D7 /* Utility.hpp */,
+				CC8658062629BF2700FFB5D7 /* Search.cpp */,
+				CC8658072629BF2700FFB5D7 /* Search.hpp */,
+				CC8658122629C00C00FFB5D7 /* Data_structs.cpp */,
+				CC8658132629C00C00FFB5D7 /* Data_structs.hpp */,
+				A164B2C32627A3BB00160CF7 /* ctpl_stl.h */,
+			);
+			path = src;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -214,6 +244,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				A1A1F5812602555600E15AA0 /* main.cpp in Sources */,
+				CC8658082629BF2700FFB5D7 /* Search.cpp in Sources */,
+				CC8658142629C00C00FFB5D7 /* Data_structs.cpp in Sources */,
+				CC8658102629BF8F00FFB5D7 /* Utility.cpp in Sources */,
+				CC86580C2629BF7D00FFB5D7 /* Board.cpp in Sources */,
 				A1A1F57E2602555600E15AA0 /* ResourcePath.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
