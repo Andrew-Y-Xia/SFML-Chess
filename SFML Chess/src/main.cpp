@@ -50,16 +50,6 @@ void set_single_texture(int color, piece_type piece, sf::Sprite& sprite) {
     }
 }
 
-void debug_print_moves(std::forward_list<Move> moves) {
-    for (std::forward_list<Move>::iterator it = moves.begin() ; it != moves.end(); ++it) {
-        std::cout << "From: " << it->from_c.x << ", " << it->from_c.y << "  |  To: " << it->to_c.x << ", " << it->to_c.y << "  |  Type: " << it->type << std::endl;
-    }
-    for (int i = 0; i < 10; i++) {
-        std::cout << '\n';
-    }
-}
-
-
 
 
 
@@ -207,10 +197,10 @@ void castle_sprite_handler(int castle_side_value, Move validated_move) {
 
 
 
-void en_passant_sprite_handler(int en_passant_side_value, Move move, Move validated_move) {
+void en_passant_sprite_handler(int en_passant_side_value, Move validated_move) {
     int temp_index;
     if (validated_move.type == En_Passant) {
-        temp_index = locate_sprite_clicked_index(sprites, move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, en_passant_side_value * WIDTH/8 + WIDTH/16 - OFFSET, NULL);
+        temp_index = locate_sprite_clicked_index(sprites, validated_move.to_c.x * WIDTH/8 + WIDTH/16 - OFFSET, en_passant_side_value * WIDTH/8 + WIDTH/16 - OFFSET, NULL);
         if (temp_index != -1) {
             std::forward_list<sf::Sprite>::iterator en_p_it = sprites.before_begin();
             std::advance(en_p_it, temp_index);
@@ -248,7 +238,7 @@ int main() {
     s_timer = 0;
     
     
-    
+    int frame_counter = 0;
     
     sf::Sprite* sprite_being_dragged;
     sprite_being_dragged = NULL;
@@ -313,7 +303,7 @@ int main() {
     }
      */
 
-    
+    /*
 //    std::cout << board.Perft(6) << std::endl;
 //    std::cout<<counter;
     print_move(searcher.find_best_move(6), true);
@@ -324,6 +314,7 @@ int main() {
     
     std::cout << "Time: " << ms_double.count() << "ms\n";
     std::cout << "s_timer: " << s_timer << "ms\n";
+     */
 
     board.clear_attacks_on_king();
     board.set_texture_to_pieces();
@@ -346,115 +337,156 @@ int main() {
             // "close requested" event: we close the window
             if (event.type == sf::Event::Closed)
                 window.close();
-            else if (event.type == sf::Event::MouseButtonPressed)
-            {
-                if (event.mouseButton.button == sf::Mouse::Left && !sprite_being_dragged)
+            
+            if (board.get_current_turn() == 0) {
+                if (event.type == sf::Event::MouseButtonPressed)
                 {
-                    if (trying_to_promote) {
-                        int temp_index = locate_sprite_clicked_index(promotion_sprites_black, sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y, NULL);
-                        if (temp_index != -1) {
-                            switch (temp_index) {
-                                case 3:
-                                    move.type = Promote_to_Queen;
-                                    break;
-                                case 2:
-                                    move.type = Promote_to_Rook;
-                                    break;
-                                case 1:
-                                    move.type = Promote_to_Bishop;
-                                    break;
-                                case 0:
-                                    move.type = Promote_to_Knight;
-                                    break;
-                                default:
-                                    std::cout << "Something went wrong about promotion. " << std::endl;
-                                    break;
-                            }
+                    if (event.mouseButton.button == sf::Mouse::Left && !sprite_being_dragged)
+                    {
+                        if (trying_to_promote) {
+                            int temp_index = locate_sprite_clicked_index(promotion_sprites_black, sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y, NULL);
+                            if (temp_index != -1) {
+                                switch (temp_index) {
+                                    case 3:
+                                        move.type = Promote_to_Queen;
+                                        break;
+                                    case 2:
+                                        move.type = Promote_to_Rook;
+                                        break;
+                                    case 1:
+                                        move.type = Promote_to_Bishop;
+                                        break;
+                                    case 0:
+                                        move.type = Promote_to_Knight;
+                                        break;
+                                    default:
+                                        std::cout << "Something went wrong about promotion. " << std::endl;
+                                        break;
+                                }
 
-                            validated_move = board.request_move(move);
-//                            board.debug_print();
-                            
-                            sf::Sprite* sprite = locate_sprite_clicked(sprites, validated_move.from_c.x * WIDTH/8 + WIDTH/16 - OFFSET, validated_move.from_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
-                            
-                            set_single_promotion_texture(!board.get_current_turn(), 3 - temp_index, *sprite);
-                            normal_move_sprite_handler(validated_move, sprite);
-                            
-                            trying_to_promote = false;
+                                validated_move = board.request_move(move);
+    //                            board.debug_print();
+    
+                                sf::Sprite* sprite = locate_sprite_clicked(sprites, validated_move.from_c.x * WIDTH/8 + WIDTH/16 - OFFSET, validated_move.from_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
+    
+                                set_single_promotion_texture(!board.get_current_turn(), 3 - temp_index, *sprite);
+                                normal_move_sprite_handler(validated_move, sprite);
+    
+                                trying_to_promote = false;
+                            }
+                        }
+                        else {
+                            // save the sprite being dragged
+                            sprite_being_dragged = locate_sprite_clicked(sprites, sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                            if (sprite_being_dragged) {
+                                move.from_c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                            }
                         }
                     }
-                    else {
-                        // save the sprite being dragged
-                        sprite_being_dragged = locate_sprite_clicked(sprites, sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                }
+                else if (event.type == sf::Event::MouseButtonReleased) {
+                    if (event.mouseButton.button == sf::Mouse::Left) {
                         if (sprite_being_dragged) {
-                            move.from_c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+    
+                            move.to_c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
+                            move.type = Normal;
+                            trying_to_promote = board.is_trying_to_promote(move);
+    
+    
+                            if (!trying_to_promote) {
+    
+                                int castle_side_value, en_passant_side_value;
+                                if (board.get_current_turn() == 1) {
+                                    en_passant_side_value = 4;
+                                    castle_side_value = 0;
+                                }
+                                else {
+                                    en_passant_side_value = 3;
+                                    castle_side_value = 7;
+                                }
+    
+    
+                                validated_move = board.request_move(move);
+    
+                                // This section checks and handles the validity of move, including drawing the sprite
+                                if (validated_move.type != Illegal) {
+                                    std::cout << board.generate_FEN() << '\n';
+    
+                                    // If move is valid, set the sprite to the new position, delete the sprite that was residing in the to_location, and register the move with the board.
+    
+    
+                                    // Standard move (Move piece from cords A to cords B, delete the sprite that is currently at the target location)
+                                    normal_move_sprite_handler(validated_move, sprite_being_dragged);
+    
+                                    switch (validated_move.type) {
+                                        case Castle_Kingside:
+                                        case Castle_Queenside:
+                                            // Castle handler
+                                            castle_sprite_handler(castle_side_value, validated_move);
+                                            break;
+                                        case En_Passant:
+                                            // En Passant Handler
+                                            en_passant_sprite_handler(en_passant_side_value, validated_move);
+                                            break;
+                                        default:
+                                            break;
+                                    }
+
+                                    frame_counter = 0;
+    
+    //                                board.debug_print();
+                                }
+                                else {
+                                    // If move isn't valid, return sprite to original position and do nothing
+                                    sprite_being_dragged->setPosition(move.from_c.x * WIDTH/8 + WIDTH/16 - OFFSET, move.from_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
+                                }
+                            }
+                            else {
+                                // If move is trying to promote, return sprite to original position and do nothing
+                                sprite_being_dragged->setPosition(move.from_c.x * WIDTH/8 + WIDTH/16 - OFFSET, move.from_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
+                            }
+                            sprite_being_dragged = NULL;
                         }
                     }
                 }
             }
-            else if (event.type == sf::Event::MouseButtonReleased) {
-                if (event.mouseButton.button == sf::Mouse::Left) {
-                    if (sprite_being_dragged) {
-    
-                        move.to_c = find_grid_bounds(sf::Mouse::getPosition(window).x, sf::Mouse::getPosition(window).y);
-                        move.type = Normal;
-                        trying_to_promote = board.is_trying_to_promote(move);
-                        
-                        
-                        if (!trying_to_promote) {
-                            
-                            int castle_side_value, en_passant_side_value;
-                            if (board.get_current_turn() == 1) {
-                                en_passant_side_value = 4;
-                                castle_side_value = 0;
-                            }
-                            else {
-                                en_passant_side_value = 3;
-                                castle_side_value = 7;
-                            }
-                            
-                            
-                            validated_move = board.request_move(move);
-                            
-                            // This section checks and handles the validity of move, including drawing the sprite
-                            if (validated_move.type != Illegal) {
-                                std::cout << board.generate_FEN() << '\n';
-    
-                                // If move is valid, set the sprite to the new position, delete the sprite that was residing in the to_location, and register the move with the board.
-    
-    
-                                // Standard move (Move piece from cords A to cords B, delete the sprite that is currently at the target location)
-                                normal_move_sprite_handler(validated_move, sprite_being_dragged);
-                                
-                                switch (validated_move.type) {
-                                    case Castle_Kingside:
-                                    case Castle_Queenside:
-                                        // Castle handler
-                                        castle_sprite_handler(castle_side_value, validated_move);
-                                        break;
-                                    case En_Passant:
-                                        // En Passant Handler
-                                        en_passant_sprite_handler(en_passant_side_value, move, validated_move);
-                                        break;
-                                    default:
-                                        break;
-                                }
-
-                                
-//                                board.debug_print();
-                            }
-                            else {
-                                // If move isn't valid, return sprite to original position and do nothing
-                                sprite_being_dragged->setPosition(move.from_c.x * WIDTH/8 + WIDTH/16 - OFFSET, move.from_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
-                            }
-                        }
-                        else {
-                            // If move is trying to promote, return sprite to original position and do nothing
-                            sprite_being_dragged->setPosition(move.from_c.x * WIDTH/8 + WIDTH/16 - OFFSET, move.from_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
-                        }
-                        
-                        sprite_being_dragged = NULL;
-                    }
+            
+            else if (frame_counter > 2) {
+                // Now, do the AI's move
+                
+                Search search(board);
+                Move best_move = search.find_best_move(6);
+                
+                
+                sf::Sprite* AI_sprite;
+                AI_sprite = locate_sprite_clicked(sprites, best_move.from_c.x * WIDTH/8 + WIDTH/16 - OFFSET, best_move.from_c.y * WIDTH/8 + WIDTH/16 - OFFSET);
+                normal_move_sprite_handler(best_move, AI_sprite);
+                
+                int castle_side_value, en_passant_side_value;
+                if (board.get_current_turn() == 1) {
+                    en_passant_side_value = 4;
+                    castle_side_value = 0;
                 }
+                else {
+                    en_passant_side_value = 3;
+                    castle_side_value = 7;
+                }
+                
+                switch (best_move.type) {
+                    case Castle_Kingside:
+                    case Castle_Queenside:
+                        // Castle handler
+                        castle_sprite_handler(castle_side_value, best_move);
+                        break;
+                    case En_Passant:
+                        // En Passant Handler
+                        en_passant_sprite_handler(en_passant_side_value, validated_move);
+                        break;
+                    default:
+                        break;
+                }
+                
+                board.process_move(best_move);
             }
         }
 
@@ -493,7 +525,7 @@ int main() {
         
         // end the current frame
         window.display();
-        
+        frame_counter++;
         
         /*
         // Measuring FPS

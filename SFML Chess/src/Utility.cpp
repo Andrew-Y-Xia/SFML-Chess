@@ -87,3 +87,13 @@ Cords index_to_increment(int i) {
             std::cout << "Should not have occured index_to_increment\n";
     }
 }
+
+
+void debug_print_moves(std::forward_list<Move> moves) {
+    for (std::forward_list<Move>::iterator it = moves.begin() ; it != moves.end(); ++it) {
+        std::cout << "From: " << it->from_c.x << ", " << it->from_c.y << "  |  To: " << it->to_c.x << ", " << it->to_c.y << "  |  Type: " << it->type << std::endl;
+    }
+    for (int i = 0; i < 10; i++) {
+        std::cout << '\n';
+    }
+}
