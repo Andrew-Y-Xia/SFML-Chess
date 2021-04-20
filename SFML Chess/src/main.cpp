@@ -223,6 +223,9 @@ void normal_move_sprite_handler(Move validated_move, sf::Sprite* sprite_being_dr
 }
 
 
+
+/*
+
 int main() {
     
     /*
@@ -538,4 +541,14 @@ int main() {
     }
 
     return EXIT_SUCCESS;
+}
+
+*/
+
+
+
+int main() {
+    
+    
+    return 0;
 }

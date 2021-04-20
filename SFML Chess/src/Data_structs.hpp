@@ -11,89 +11,17 @@
 
 #include "depend.hpp"
 
-struct Cords {
-    int x: 8;
-    int y: 8;
-    
-    bool operator==(const Cords c2);
-    bool operator!=(const Cords c2);
-    Cords();
-    Cords(int a, int b);
+enum square_mappings {
+  a1, b1, c1, d1, e1, f1, g1, h1,
+  a2, b2, c2, d2, e2, f2, g2, h2,
+  a3, b3, c3, d3, e3, f3, g3, h3,
+  a4, b4, c4, d4, e4, f4, g4, h4,
+  a5, b5, c5, d5, e5, f5, g5, h5,
+  a6, b6, c6, d6, e6, f6, g6, h6,
+  a7, b7, c7, d7, e7, f7, g7, h7,
+  a8, b8, c8, d8, e8, f8, g8, h8
 };
 
-
-namespace std {
-    template<>
-    struct hash<Cords>
-    {
-        size_t operator()(Cords const& c) const noexcept;
-    };
-}
-
-struct cords_eq {
-    bool operator()(Cords c1, Cords c2) const;
-};
-
-struct eqstr
-{
-    bool operator()(std::string s1, std::string s2) const;
-};
-
-template <class T, class Sub>
-bool lookup(T Set, Sub word);
-
-// What type of piece is it?
-enum piece_type {
-    Empty,
-    Pawn,
-    Knight,
-    Bishop,
-    Rook,
-    Queen,
-    King
-};
-
-enum move_type {
-    // Pawn moving two steps for initial move is not included since it can be treated like a normal move
-    Normal,
-    Promote_to_Queen,
-    Promote_to_Rook,
-    Promote_to_Bishop,
-    Promote_to_Knight,
-    En_Passant,
-    Castle_Queenside,
-    Castle_Kingside,
-    Illegal
-};
-
-
-struct Move {
-    Cords from_c;
-    Cords to_c;
-    
-    move_type type: 4;
-    int score: 8;
-};
-
-bool move_cmp(Move first, Move second);
-
-struct Move_data {
-    Move move;
-    piece_type captured_piece : 4;
-    Cords previous_en_passant_cords;
-    bool white_can_castle_queenside: 1;
-    bool white_can_castle_kingside: 1;
-    bool black_can_castle_queenside: 1;
-    bool black_can_castle_kingside: 1;
-};
-
-
-// container for indiviual squares on chess board
-struct Square {
-    piece_type piece: 7;
-    // 0 is white, 1 is black
-    unsigned int color: 1;
-};
 
 
 
