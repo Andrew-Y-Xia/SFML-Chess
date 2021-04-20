@@ -131,13 +131,13 @@
 				A1A1F5802602555600E15AA0 /* main.cpp */,
 				CC86580A2629BF7D00FFB5D7 /* Board.cpp */,
 				CC86580B2629BF7D00FFB5D7 /* Board.hpp */,
-				CC8658182629D1C200FFB5D7 /* depend.hpp */,
 				CC86580E2629BF8F00FFB5D7 /* Utility.cpp */,
 				CC86580F2629BF8F00FFB5D7 /* Utility.hpp */,
 				CC8658062629BF2700FFB5D7 /* Search.cpp */,
 				CC8658072629BF2700FFB5D7 /* Search.hpp */,
 				CC8658122629C00C00FFB5D7 /* Data_structs.cpp */,
 				CC8658132629C00C00FFB5D7 /* Data_structs.hpp */,
+				CC8658182629D1C200FFB5D7 /* depend.hpp */,
 				A164B2C32627A3BB00160CF7 /* ctpl_stl.h */,
 			);
 			path = src;
@@ -267,6 +267,7 @@
 					"$(inherited)",
 				);
 				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_UNROLL_LOOPS = YES;
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				HEADER_SEARCH_PATHS = (
 					/usr/local/include/,
@@ -276,6 +277,7 @@
 					/usr/local/lib/,
 					"$(inherited)",
 				);
+				LLVM_LTO = YES_THIN;
 				MACOSX_DEPLOYMENT_TARGET = 11.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -313,6 +315,7 @@
 					"$(inherited)",
 				);
 				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_UNROLL_LOOPS = YES;
 				GCC_VERSION = com.apple.compilers.llvm.clang.1_0;
 				HEADER_SEARCH_PATHS = (
 					/usr/local/include/,
@@ -322,6 +325,7 @@
 					/usr/local/lib/,
 					"$(inherited)",
 				);
+				LLVM_LTO = YES;
 				MACOSX_DEPLOYMENT_TARGET = 11.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",

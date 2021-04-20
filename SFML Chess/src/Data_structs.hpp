@@ -9,8 +9,7 @@
 #ifndef Data_structs_hpp
 #define Data_structs_hpp
 
-#include <iostream>
-#include <string>
+#include "depend.hpp"
 
 struct Cords {
     int x: 8;
