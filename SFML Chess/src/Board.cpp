@@ -1802,14 +1802,15 @@ void Board::debug_piece_values() {
 long Board::Perft(int depth /* assuming >= 1 */) {
     long nodes = 0;
     int n_moves = 0;
+    
+    if (depth == 0) {
+        return 1;
+    }
 
     std::vector<Move> moves;
     moves.reserve(256);
     n_moves = generate_moves(moves);
 
-    if (depth == 0) {
-        return 1;
-    }
 
     /*
     if (depth == 1) {

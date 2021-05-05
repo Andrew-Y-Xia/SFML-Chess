@@ -281,7 +281,7 @@ int main() {
     promotion_rectangle.setPosition(WIDTH / 4, WIDTH / 2 - WIDTH / 16);
     
     // init the chess board
-    Board board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0");
+    Board board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
 
     std::vector<Move> moves;
     moves.reserve(256);
@@ -303,18 +303,16 @@ int main() {
     }
      */
 
-    /*
-//    std::cout << board.Perft(6) << std::endl;
+    std::cout << board.Perft(5) << std::endl;
 //    std::cout<<counter;
-    print_move(searcher.find_best_move(6), true);
+//    print_move(searcher.find_best_move(6), true);
     std::cout << '\n';
 
     auto t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double, std::milli> ms_double = t2 - t1;
     
     std::cout << "Time: " << ms_double.count() << "ms\n";
-    std::cout << "s_timer: " << s_timer << "ms\n";
-     */
+//    std::cout << "s_timer: " << s_timer << "ms\n";
 
     board.clear_attacks_on_king();
     board.set_texture_to_pieces();
